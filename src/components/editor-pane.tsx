@@ -105,6 +105,9 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
     ? getNodeLockInfo(state, selectedNode.id)
     : {
         isEffectivelyLocked: false,
+        isLockedBySelf: false,
+        isLockedByAncestorFolder: false,
+        isLockedByAncestorPage: false,
         canToggleLock: false,
       };
 
