@@ -20,9 +20,16 @@ const DUPLICATE_PAGE_NAME_MESSAGE =
 type SidebarNodeProps = {
   nodeId: string;
   depth: number;
+  canManage?: boolean;
+  canViewNode?: (id: string) => boolean;
 };
 
-export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
+export function SidebarNode({
+  nodeId,
+  depth,
+  canManage = true,
+  canViewNode,
+}: SidebarNodeProps) {
   const {
     state,
     selectNode,
@@ -85,13 +92,15 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
             : "text-zinc-700 hover:bg-zinc-100/90",
         ].join(" ")}
         style={{ marginLeft: `${indentPx}px` }}
-        draggable={!isEditing}
+        draggable={canManage && !isEditing}
         onDragStart={(event) => {
+          if (!canManage) return;
           event.stopPropagation();
           event.dataTransfer.setData("application/x-flowstate-node-id", node.id);
           event.dataTransfer.effectAllowed = "move";
         }}
         onDragOver={(event) => {
+          if (!canManage) return;
           event.preventDefault();
           event.stopPropagation();
           setIsDragOver(true);
@@ -121,7 +130,7 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
           type="button"
           onClick={() => {
             if (isEditing) return;
-            if (isTitleHovered && isSelected) {
+            if (canManage && isTitleHovered && isSelected) {
               setInitialTitle(node.title);
               setDraftTitle(node.title);
               setIsEditing(true);
@@ -130,6 +139,7 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
             selectNode(node.id);
           }}
           onDoubleClick={() => {
+            if (!canManage) return;
             setInitialTitle(node.title);
             setDraftTitle(node.title);
             setIsEditing(true);
@@ -183,7 +193,8 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
           )}
         </button>
 
-        <div className="ml-1 hidden items-center gap-0.5 group-hover:flex group-focus-within:flex">
+        {canManage ? (
+          <div className="ml-1 hidden items-center gap-0.5 group-hover:flex group-focus-within:flex">
           <button
             type="button"
             onClick={(event) => {
@@ -222,7 +233,8 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
           >
             <TrashIcon className="h-3.5 w-3.5" />
           </button>
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {renameNotice && (
@@ -235,8 +247,16 @@ export function SidebarNode({ nodeId, depth }: SidebarNodeProps) {
 
       {hasChildren && node.isExpanded && (
         <div className="animate-[fadeIn_140ms_ease-out]">
-          {node.childrenIds.map((childId) => (
-            <SidebarNode key={childId} nodeId={childId} depth={depth + 1} />
+          {node.childrenIds
+            .filter((childId) => (canViewNode ? canViewNode(childId) : true))
+            .map((childId) => (
+            <SidebarNode
+              key={childId}
+              nodeId={childId}
+              depth={depth + 1}
+              canManage={canManage}
+              canViewNode={canViewNode}
+            />
           ))}
         </div>
       )}

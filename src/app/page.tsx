@@ -1,121 +1,131 @@
 "use client";
 
-import { FlowLogoIcon } from "@/components/icons";
+import { DashboardHome } from "@/components/dashboard-home";
 import { EditorPane } from "@/components/editor-pane";
 import { SignInPortal } from "@/components/sign-in-portal";
 import { Sidebar } from "@/components/sidebar";
 import { FlowStateProvider } from "@/context/flowstate-context";
-import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import type { MouseEvent as ReactMouseEvent } from "react";
-import { useEffect, useState } from "react";
-
-const SIDEBAR_MIN_WIDTH = 240;
-const SIDEBAR_MAX_WIDTH = 520;
-const SIDEBAR_DEFAULT_WIDTH = 290;
-const THEME_STORAGE_KEY = "quicklearn:theme";
-const SIDEBAR_WIDTH_STORAGE_KEY = "quicklearn:sidebar-width";
+import { useStudentProgress } from "@/lib/hooks/use-student-progress";
+import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
+import { useTheme } from "@/lib/hooks/use-theme";
+import type { AuthenticatedAccount } from "@/types/auth";
+import { useState } from "react";
 
 export default function HomePage() {
-  const [isSignInPortalOpen, setIsSignInPortalOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = usePersistedState<number>({
-    key: SIDEBAR_WIDTH_STORAGE_KEY,
-    defaultValue: SIDEBAR_DEFAULT_WIDTH,
-    serialize: (value) => String(value),
-    deserialize: (raw) => {
-      const value = Number(raw);
-      if (!Number.isFinite(value)) return SIDEBAR_DEFAULT_WIDTH;
-      return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, value));
-    },
-  });
-  const [isDarkMode, setIsDarkMode] = usePersistedState<boolean>({
-    key: THEME_STORAGE_KEY,
-    defaultValue: false,
-    serialize: (value) => (value ? "dark" : "light"),
-    deserialize: (raw) => raw === "dark",
-  });
+  type AppView = "workspace" | "dashboard";
+  const [view, setView] = useState<AppView>("workspace");
+  const [isSidebarAutoOpen, setIsSidebarAutoOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthenticatedAccount | null>(null);
+  const {
+    selectedStudentEmail,
+    selectedStudent,
+    activeStudentUnlocks,
+    currentStudentStats,
+    selectedStudentMilestone,
+    chapterTagsByTitle,
+    selectStudent,
+    toggleChapterForSelectedStudent,
+    setMilestoneForSelectedStudent,
+    chapterTitles,
+    students,
+  } = useStudentProgress(currentUser);
+  const { sidebarWidth, startResize } = useSidebarResize();
+  const { isDarkMode, setIsDarkMode } = useTheme();
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDarkMode) {
-      root.classList.add("theme-dark");
-    } else {
-      root.classList.remove("theme-dark");
-    }
-  }, [isDarkMode]);
+  const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
+    setCurrentUser(account);
+    setView("dashboard");
+  };
 
-  const startResize = (event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = sidebarWidth;
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setView("dashboard");
+  };
 
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
+  const handleSwitchAccount = () => {
+    setCurrentUser(null);
+    setView("dashboard");
+  };
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const nextWidth = Math.min(
-        SIDEBAR_MAX_WIDTH,
-        Math.max(SIDEBAR_MIN_WIDTH, startWidth + delta),
-      );
-      setSidebarWidth(nextWidth);
-    };
+  const handleOpenDashboardFromSidebar = () => {
+    setIsSidebarAutoOpen(false);
+    setView("dashboard");
+  };
 
-    const stopResize = () => {
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", stopResize);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", stopResize);
+  const handleOpenWorkspaceFromDashboard = () => {
+    setIsSidebarAutoOpen(true);
+    setView("workspace");
   };
 
   return (
     <FlowStateProvider>
-      <main className={`h-screen w-screen bg-[var(--surface-app)] ${isDarkMode ? "theme-dark" : ""}`}>
-        <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
-          {isSignInPortalOpen && (
+      <main
+        className={`h-screen w-screen bg-[var(--surface-app)] ${isDarkMode ? "theme-dark" : ""}`}
+      >
+        {!currentUser ? (
+          <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
             <SignInPortal
-              onClose={() => setIsSignInPortalOpen(false)}
-              onContinue={() => setIsSignInPortalOpen(false)}
-            />
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsSignInPortalOpen(true)}
-            className="absolute left-3 top-3 z-40 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white/95 text-zinc-700 shadow-sm hover:bg-zinc-50"
-            aria-label="Open sign in portal"
-            title="Open sign in portal"
-          >
-            <FlowLogoIcon className="h-5 w-5" />
-          </button>
-
-          <div className="group/sidebar absolute inset-y-0 left-0 z-30 w-2">
-            <aside
-              id="flowstate-sidebar"
-              className="absolute inset-y-0 left-0 -translate-x-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/sidebar:translate-x-0"
-              style={{ width: `${sidebarWidth}px` }}
-            >
-              <Sidebar />
-              <div
-                className="absolute inset-y-0 right-0 hidden w-2 cursor-col-resize lg:block"
-                onMouseDown={startResize}
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize sidebar"
-              />
-            </aside>
-          </div>
-
-          <div className="h-full">
-            <EditorPane
-              isDarkMode={isDarkMode}
-              onToggleDarkMode={() => setIsDarkMode((value) => !value)}
+              onClose={() => {}}
+              onContinue={handleContinueFromSignIn}
+              showCloseButton={false}
             />
           </div>
-        </div>
+        ) : view === "dashboard" ? (
+          <DashboardHome
+            name={currentUser.name}
+            role={currentUser.role}
+            stats={currentStudentStats}
+            activeStudentName={selectedStudent?.name}
+            onOpenWorkspace={handleOpenWorkspaceFromDashboard}
+            onSignOut={handleSignOut}
+            onSwitchAccount={handleSwitchAccount}
+            chapterTitles={chapterTitles}
+            students={students}
+            selectedStudentEmail={selectedStudentEmail}
+            selectedStudentMilestone={selectedStudentMilestone}
+            chapterTagsByTitle={chapterTagsByTitle}
+            unlockedChapterTitles={activeStudentUnlocks}
+            onSelectStudent={selectStudent}
+            onSetMilestoneChapter={setMilestoneForSelectedStudent}
+            onToggleChapter={toggleChapterForSelectedStudent}
+          />
+        ) : (
+          <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
+            <div className="group/sidebar absolute inset-y-0 left-0 z-30 w-2">
+              <aside
+                id="flowstate-sidebar"
+                className={[
+                  "absolute inset-y-0 left-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/sidebar:translate-x-0",
+                  isSidebarAutoOpen ? "translate-x-0" : "-translate-x-full",
+                ].join(" ")}
+                style={{ width: `${sidebarWidth}px` }}
+                onMouseLeave={() => {
+                  if (!isSidebarAutoOpen) return;
+                  setIsSidebarAutoOpen(false);
+                }}
+              >
+                <Sidebar
+                  onOpenDashboard={handleOpenDashboardFromSidebar}
+                  isDarkMode={isDarkMode}
+                  onToggleDarkMode={() => setIsDarkMode((value) => !value)}
+                  role={currentUser.role}
+                  unlockedChapterTitles={activeStudentUnlocks}
+                />
+                <div
+                  className="absolute inset-y-0 right-0 hidden w-2 cursor-col-resize lg:block"
+                  onMouseDown={startResize}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize sidebar"
+                />
+              </aside>
+            </div>
+
+            <div className="h-full">
+              <EditorPane role={currentUser.role} />
+            </div>
+          </div>
+        )}
       </main>
     </FlowStateProvider>
   );

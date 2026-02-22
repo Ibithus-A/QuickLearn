@@ -5,13 +5,10 @@ type IconProps = SVGProps<SVGSVGElement>;
 export function FlowLogoIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      <rect x="3" y="3" width="18" height="18" rx="6" className="fill-zinc-900" />
-      <path
-        d="M7 9h10M7 12h7M7 15h5"
-        stroke="white"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <rect x="2.5" y="2.5" width="19" height="19" rx="6.5" fill="white" />
+      <rect x="2.5" y="2.5" width="19" height="19" rx="6.5" stroke="#111111" strokeWidth="1" />
+      <circle cx="12" cy="12" r="4.8" stroke="#111111" strokeWidth="1.7" />
+      <path d="M14.8 14.8 17 17" stroke="#111111" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   );
 }

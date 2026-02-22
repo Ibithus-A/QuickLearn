@@ -19,8 +19,7 @@ type SlashOption = {
 };
 
 type EditorPaneProps = {
-  isDarkMode: boolean;
-  onToggleDarkMode: () => void;
+  role: "tutor" | "student";
 };
 
 const SLASH_OPTIONS: SlashOption[] = [
@@ -87,8 +86,8 @@ function materializeTemplate(template: string) {
   };
 }
 
-export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
-  const { state, toggleLock, updateContent, updateTitle } = useFlowState();
+export function EditorPane({ role }: EditorPaneProps) {
+  const { state, updateContent, updateTitle } = useFlowState();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [slashContext, setSlashContext] = useState<{
     start: number;
@@ -100,7 +99,6 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
 
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
-  const lockLabel = selectedNode?.kind === "folder" ? "Folder" : "Page";
   const lockInfo = selectedNode
     ? getNodeLockInfo(state, selectedNode.id)
     : {
@@ -110,8 +108,12 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
         isLockedByAncestorPage: false,
         canToggleLock: false,
       };
+  const isStudent = role === "student";
+  const canEditTitle = !isStudent;
+  const canEditContent = !isStudent;
 
   const slashOptions = useMemo(() => {
+    if (!canEditContent) return [];
     if (!slashContext) return [];
 
     const query = slashContext.query.trim().toLowerCase();
@@ -120,7 +122,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
     return SLASH_OPTIONS.filter((option) =>
       `${option.label} ${option.hint}`.toLowerCase().includes(query),
     );
-  }, [slashContext]);
+  }, [canEditContent, slashContext]);
 
   if (!selectedNode) {
     return (
@@ -135,9 +137,6 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
           <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-600 md:text-base">
             Capture ideas, write notes, or organize folders. Everything is saved
             locally and ready whenever you come back.
-          </p>
-          <p className="mt-8 inline-flex rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
-            Start by creating your first page or folder.
           </p>
         </div>
       </section>
@@ -155,6 +154,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
     focusCursor = true,
   ) => {
     if (!selectedNode) return;
+    if (!canEditContent) return;
     updateContent(selectedNode.id, nextValue);
     closeSlashMenu();
 
@@ -170,6 +170,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
   };
 
   const applySlashOption = (option: SlashOption) => {
+    if (!canEditContent) return;
     const textarea = textareaRef.current;
     if (!textarea || !slashContext) return;
 
@@ -204,13 +205,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
 
   return (
     <section className="relative grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] bg-[var(--surface-panel)]">
-      <EditorActionsDrawer
-        isDarkMode={isDarkMode}
-        lockInfo={lockInfo}
-        lockLabel={lockLabel}
-        onToggleLock={() => toggleLock(selectedNode.id)}
-        onToggleDarkMode={onToggleDarkMode}
-      />
+      <EditorActionsDrawer />
 
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
         <div
@@ -230,6 +225,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
               <input
                 value={selectedNode.title}
                 onChange={(event) => {
+                  if (!canEditTitle) return;
                   const nextTitle = event.target.value;
                   if (hasDuplicatePageTitleInParent(state, selectedNode.id, nextTitle)) {
                     setRenameNotice(DUPLICATE_PAGE_NAME_MESSAGE);
@@ -238,6 +234,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
                   updateTitle(selectedNode.id, nextTitle);
                 }}
                 onBlur={() => {
+                  if (!canEditTitle) return;
                   const trimmed = selectedNode.title.trim();
                   if (!trimmed) {
                     updateTitle(selectedNode.id, getDefaultTitle(selectedNode.kind));
@@ -251,6 +248,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
                 }}
                 className="w-full rounded-md border border-transparent bg-transparent px-1 py-1 text-4xl font-semibold tracking-[-0.03em] text-zinc-900 outline-none placeholder:text-zinc-300"
                 placeholder={getDefaultTitle(selectedNode.kind)}
+                readOnly={!canEditTitle}
               />
 
               {renameNotice && (
@@ -310,6 +308,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
               id="note-content"
               value={selectedNode.content}
               onChange={(event) => {
+                if (!canEditContent) return;
                 const nextValue = event.target.value;
                 updateContent(selectedNode.id, nextValue);
 
@@ -330,6 +329,7 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
                 }, 120);
               }}
               onKeyDown={(event) => {
+                if (!canEditContent) return;
                 if (!slashContext) return;
 
                 if (event.key === "Escape") {
@@ -364,7 +364,11 @@ export function EditorPane({ isDarkMode, onToggleDarkMode }: EditorPaneProps) {
                   ? "Write notes for this folder... Type / for commands."
                   : "Start writing your thoughts... Type / for commands."
               }
-              className="scroll-slim notion-editor min-h-[60vh] w-full resize-none bg-transparent py-1 text-[15px] leading-7 text-zinc-800 outline-none placeholder:text-zinc-400"
+              readOnly={!canEditContent}
+              className={[
+                "scroll-slim notion-editor min-h-[60vh] w-full resize-none bg-transparent py-1 text-[15px] leading-7 text-zinc-800 outline-none placeholder:text-zinc-400",
+                !canEditContent ? "cursor-default opacity-75" : "",
+              ].join(" ")}
             />
           </div>
         </div>

@@ -1,43 +1,71 @@
 "use client";
 
 import { CloseIcon, FlowLogoIcon } from "@/components/icons";
+import { TUTOR_ACCOUNT, authenticateCredentials } from "@/lib/auth";
+import type { AuthenticatedAccount, UserRole } from "@/types/auth";
 import { useState } from "react";
 
-type UserRole = "tutor" | "student";
-
 type SignInPortalProps = {
-  onContinue: (role: UserRole) => void;
+  onContinue: (account: AuthenticatedAccount) => void;
   onClose: () => void;
+  showCloseButton?: boolean;
 };
 
-export function SignInPortal({ onClose, onContinue }: SignInPortalProps) {
+export function SignInPortal({
+  onClose,
+  onContinue,
+  showCloseButton = true,
+}: SignInPortalProps) {
   const [role, setRole] = useState<UserRole>("student");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const account = authenticateCredentials(role, email, password);
+
+    if (!account) {
+      setError("Invalid credentials for the selected account.");
+      return;
+    }
+
+    setError("");
+    onContinue(account);
+  };
 
   return (
-    <section className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_20px_50px_rgba(9,9,11,0.08)]">
+    <section className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 p-3 backdrop-blur-[1px] md:p-4">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_20px_50px_rgba(9,9,11,0.08)] transition-all duration-300 md:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-          <FlowLogoIcon className="h-9 w-9" />
-          <div>
-            <p className="text-lg font-semibold text-zinc-900">QuickLearn Portal</p>
-            <p className="text-xs text-zinc-500">Tutor & Student Sign In</p>
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white">
+              <FlowLogoIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-zinc-900">QuickLearn Portal</p>
+              <p className="text-xs text-zinc-500">Tutor & Student Sign In</p>
+            </div>
           </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-            aria-label="Close sign in portal"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+          {showCloseButton ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+              aria-label="Close sign in portal"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
           <button
             type="button"
-            onClick={() => setRole("student")}
+            onClick={() => {
+              setRole("student");
+              setError("");
+            }}
             className={[
               "rounded-md px-3 py-2 text-sm transition",
               role === "student"
@@ -49,7 +77,10 @@ export function SignInPortal({ onClose, onContinue }: SignInPortalProps) {
           </button>
           <button
             type="button"
-            onClick={() => setRole("tutor")}
+            onClick={() => {
+              setRole("tutor");
+              setError("");
+            }}
             className={[
               "rounded-md px-3 py-2 text-sm transition",
               role === "tutor"
@@ -63,10 +94,7 @@ export function SignInPortal({ onClose, onContinue }: SignInPortalProps) {
 
         <form
           className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onContinue(role);
-          }}
+          onSubmit={handleSubmit}
         >
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-600">
@@ -74,8 +102,19 @@ export function SignInPortal({ onClose, onContinue }: SignInPortalProps) {
             </label>
             <input
               type="email"
-              placeholder={`${role}@quicklearn.app`}
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setError("");
+              }}
+              placeholder={
+                role === "tutor"
+                  ? TUTOR_ACCOUNT.email
+                  : "student@quicklearn.com"
+              }
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+              autoComplete="email"
+              required
             />
           </div>
 
@@ -85,10 +124,23 @@ export function SignInPortal({ onClose, onContinue }: SignInPortalProps) {
             </label>
             <input
               type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError("");
+              }}
               placeholder="••••••••"
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+              autoComplete="current-password"
+              required
             />
           </div>
+
+          {error ? (
+            <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {error}
+            </p>
+          ) : null}
 
           <button
             type="submit"

@@ -10,7 +10,7 @@ import {
   updateContentInState,
   updateTitleInState,
 } from "@/lib/tree-utils";
-import { createSeedState } from "@/lib/seed";
+import { createSeedState, insertALevelMathsTree } from "@/lib/seed";
 import type { FlowState, NodeKind } from "@/types/flowstate";
 import {
   createContext,
@@ -78,6 +78,83 @@ function isFlowStateLike(value: unknown): value is FlowState {
   );
 }
 
+function collectSubtreeIds(state: FlowState, id: string, ids: Set<string>) {
+  const node = state.nodes[id];
+  if (!node || ids.has(id)) return;
+
+  ids.add(id);
+  for (const childId of node.childrenIds) {
+    collectSubtreeIds(state, childId, ids);
+  }
+}
+
+function removeNodesFromState(state: FlowState, idsToRemove: Set<string>): FlowState {
+  if (idsToRemove.size === 0) return state;
+
+  const nodes = Object.fromEntries(
+    Object.entries(state.nodes)
+      .filter(([id]) => !idsToRemove.has(id))
+      .map(([id, node]) => [
+        id,
+        {
+          ...node,
+          childrenIds: node.childrenIds.filter((childId) => !idsToRemove.has(childId)),
+        },
+      ]),
+  );
+
+  const rootIds = state.rootIds.filter((id) => !idsToRemove.has(id));
+  const selectedId = state.selectedId && !idsToRemove.has(state.selectedId)
+    ? state.selectedId
+    : rootIds[0] ?? null;
+
+  return { ...state, nodes, rootIds, selectedId };
+}
+
+function removeDeprecatedALevelMaths(state: FlowState): FlowState {
+  const deprecatedRootTitles = new Set([
+    "AS Pure Maths (Pure Mathematics Year 1/AS)",
+    "AS Applied Maths (Statistics & Mechanics Year 1/AS)",
+    "A2 Pure Maths (Pure Mathematics Year 2)",
+    "A2 Applied (Statistics & Mechanics Year 2)",
+  ]);
+
+  const rootIdsToRemove = state.rootIds.filter((id) => {
+    const node = state.nodes[id];
+    return node ? deprecatedRootTitles.has(node.title) : false;
+  });
+
+  if (rootIdsToRemove.length === 0) return state;
+
+  const idsToRemove = new Set<string>();
+  for (const rootId of rootIdsToRemove) {
+    collectSubtreeIds(state, rootId, idsToRemove);
+  }
+
+  return removeNodesFromState(state, idsToRemove);
+}
+
+function stripDuplicatedSeedPageTitle(state: FlowState): FlowState {
+  const nodes = Object.fromEntries(
+    Object.entries(state.nodes).map(([id, node]) => {
+      if (node.kind !== "page") return [id, node];
+
+      const duplicated = `${node.title}\n\nUse this space for notes and examples.`;
+      if (node.content !== duplicated) return [id, node];
+
+      return [
+        id,
+        {
+          ...node,
+          content: "Use this space for notes and examples.",
+        },
+      ];
+    }),
+  );
+
+  return { ...state, nodes };
+}
+
 function normalizeFlowState(state: FlowState): FlowState {
   const normalizedNodes = Object.fromEntries(
     Object.entries(state.nodes).map(([id, node]) => [
@@ -90,10 +167,14 @@ function normalizeFlowState(state: FlowState): FlowState {
     ]),
   );
 
-  return {
-    ...state,
-    nodes: normalizedNodes,
-  };
+  return insertALevelMathsTree(
+    stripDuplicatedSeedPageTitle(
+      removeDeprecatedALevelMaths({
+        ...state,
+        nodes: normalizedNodes,
+      }),
+    ),
+  );
 }
 
 type FlowStateContextValue = {
