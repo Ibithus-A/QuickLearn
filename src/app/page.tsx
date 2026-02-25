@@ -30,7 +30,7 @@ export default function HomePage() {
     chapterTitles,
     students,
   } = useStudentProgress(currentUser);
-  const { sidebarWidth, startResize } = useSidebarResize();
+  const { sidebarWidth, startResize, isResizing } = useSidebarResize();
   const { isDarkMode, setIsDarkMode } = useTheme();
 
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
@@ -87,15 +87,33 @@ export default function HomePage() {
           />
         ) : (
           <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
-            <div className="group/sidebar absolute inset-y-0 left-0 z-30 w-2">
+            {!isSidebarAutoOpen ? (
+              <button
+                type="button"
+                onClick={() => setIsSidebarAutoOpen(true)}
+                className="absolute left-2 top-2 z-40 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                aria-label="Open sidebar"
+              >
+                Open sidebar
+              </button>
+            ) : null}
+
+            <div className="absolute inset-y-0 left-0 z-30">
+              <div
+                className="absolute inset-y-0 left-0 w-4"
+                onMouseEnter={() => setIsSidebarAutoOpen(true)}
+                aria-hidden
+              />
               <aside
                 id="flowstate-sidebar"
                 className={[
-                  "absolute inset-y-0 left-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/sidebar:translate-x-0",
+                  "absolute inset-y-0 left-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isSidebarAutoOpen ? "translate-x-0" : "-translate-x-full",
                 ].join(" ")}
                 style={{ width: `${sidebarWidth}px` }}
+                onMouseEnter={() => setIsSidebarAutoOpen(true)}
                 onMouseLeave={() => {
+                  if (isResizing) return;
                   if (!isSidebarAutoOpen) return;
                   setIsSidebarAutoOpen(false);
                 }}
