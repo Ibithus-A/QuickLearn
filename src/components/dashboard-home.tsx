@@ -1,6 +1,6 @@
 "use client";
 
-import { FlowLogoIcon } from "@/components/icons";
+import { FlowLogoIcon, MoonIcon, SunIcon } from "@/components/icons";
 import { CHAPTER_ONE_TITLE } from "@/lib/student-progress";
 import type { UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
@@ -12,10 +12,11 @@ type DashboardHomeProps = {
   name: string;
   role: UserRole;
   onOpenWorkspace: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
   onSignOut: () => void;
   onSwitchAccount: () => void;
   stats: StudentDailyStats;
-  activeStudentName?: string;
   chapterTitles?: string[];
   students?: Array<{ name: string; email: string }>;
   selectedStudentEmail?: string;
@@ -25,16 +26,22 @@ type DashboardHomeProps = {
   onSelectStudent?: (email: string) => void;
   onSetMilestoneChapter?: (chapterTitle: string) => void;
   onToggleChapter?: (chapterTitle: string) => void;
+  onAddStudent?: (name: string) => {
+    student: { name: string; email: string };
+    credentials: { email: string; password: string };
+  } | null;
+  onDeleteSelectedStudent?: () => void;
 };
 
 export function DashboardHome({
   name,
   role,
   onOpenWorkspace,
+  isDarkMode = false,
+  onToggleDarkMode,
   onSignOut,
   onSwitchAccount,
   stats,
-  activeStudentName,
   chapterTitles = [],
   students = [],
   selectedStudentEmail,
@@ -44,8 +51,17 @@ export function DashboardHome({
   onSelectStudent,
   onSetMilestoneChapter,
   onToggleChapter,
+  onAddStudent,
+  onDeleteSelectedStudent,
 }: DashboardHomeProps) {
   const [activeTab, setActiveTab] = useState<MetricTab>("reviewed");
+  const [newStudentName, setNewStudentName] = useState("");
+  const [latestCredentials, setLatestCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+  } | null>(null);
+  const [studentAddError, setStudentAddError] = useState<string | null>(null);
 
   const activeMetric = useMemo(
     () =>
@@ -66,7 +82,7 @@ export function DashboardHome({
   return (
     <main className="h-screen w-screen overflow-y-auto bg-[var(--surface-app)] px-3 py-4 md:px-8 md:py-7">
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-        <header className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] px-4 py-4 shadow-sm transition-all duration-300 md:px-7 md:py-5">
+        <header className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] px-4 py-4 shadow-sm transition-all duration-200 md:px-7 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white">
@@ -78,11 +94,6 @@ export function DashboardHome({
                   Welcome back
                 </h1>
                 <p className="text-sm text-zinc-600">{name}</p>
-                {role === "tutor" && activeStudentName ? (
-                  <p className="text-xs text-zinc-500">
-                    Viewing student: {activeStudentName}
-                  </p>
-                ) : null}
               </div>
             </div>
 
@@ -94,6 +105,17 @@ export function DashboardHome({
               >
                 Open Workspace
               </button>
+              {onToggleDarkMode ? (
+                <button
+                  type="button"
+                  onClick={onToggleDarkMode}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-50"
+                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                  title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={onSignOut}
@@ -113,51 +135,25 @@ export function DashboardHome({
         </header>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-300 md:p-6">
+          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-zinc-500">
                 Habit Tracker
               </h2>
+              <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-600">
+                Coming Soon
+              </span>
             </div>
 
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 md:p-4">
-              <div className="overflow-x-auto">
-                <svg
-                  viewBox="0 0 560 240"
-                  className="h-52 min-w-[460px] w-full"
-                  aria-label="Habit tracker chart"
-                >
-                  <rect x="0" y="0" width="560" height="240" fill="transparent" />
-                  <path d="M30 200H530" stroke="currentColor" className="text-zinc-300" />
-                  <path d="M30 150H530" stroke="currentColor" className="text-zinc-200" />
-                  <path d="M30 100H530" stroke="currentColor" className="text-zinc-200" />
-                  <path d="M30 50H530" stroke="currentColor" className="text-zinc-200" />
-                  <path
-                    d={stats.habitSeries
-                      .map((point, index) => {
-                        const x = 40 + index * 80;
-                        const y = 200 - point;
-                        return `${index === 0 ? "M" : "L"}${x} ${y}`;
-                      })
-                      .join(" ")}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    className="text-zinc-900"
-                    strokeLinecap="round"
-                  />
-                  <circle
-                    cx={40 + (stats.habitSeries.length - 1) * 80}
-                    cy={200 - stats.habitSeries[stats.habitSeries.length - 1]}
-                    r="5"
-                    className="fill-zinc-900"
-                  />
-                </svg>
-              </div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-10 text-center">
+              <p className="text-lg font-semibold text-zinc-800">Coming Soon</p>
+              <p className="mt-2 text-sm text-zinc-600">
+                Habit tracking is planned for a future update.
+              </p>
             </div>
           </article>
 
-          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-300 md:p-6">
+          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
               <button
                 type="button"
@@ -196,7 +192,7 @@ export function DashboardHome({
         </div>
 
         {role === "tutor" && chapterTitles.length > 0 ? (
-          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-300 md:p-6">
+          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
             <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -209,25 +205,91 @@ export function DashboardHome({
                   </p>
                 </div>
                 {students.length > 0 ? (
-                  <label className="text-sm text-zinc-600">
-                    <span className="mr-2">Student</span>
-                    <select
-                      value={selectedStudentEmail ?? students[0].email}
-                      onChange={(event) => onSelectStudent?.(event.target.value)}
-                      className="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-sm text-zinc-600">
+                      <span className="mr-2">Student</span>
+                      <select
+                        value={selectedStudentEmail ?? students[0].email}
+                        onChange={(event) => onSelectStudent?.(event.target.value)}
+                        className="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                      >
+                        {students.map((student) => (
+                          <option
+                            key={student.email}
+                            value={student.email.trim().toLowerCase()}
+                          >
+                            {student.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteSelectedStudent?.()}
+                      className={[
+                        "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
+                        isDarkMode
+                          ? "border-zinc-200 bg-white text-rose-600 hover:bg-zinc-50"
+                          : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+                      ].join(" ")}
                     >
-                      {students.map((student) => (
-                        <option
-                          key={student.email}
-                          value={student.email.trim().toLowerCase()}
-                        >
-                          {student.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      Delete Student
+                    </button>
+                  </div>
                 ) : null}
               </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={newStudentName}
+                  onChange={(event) => setNewStudentName(event.target.value)}
+                  placeholder="New student name"
+                  className="w-full max-w-[240px] rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStudentAddError(null);
+                    const created = onAddStudent?.(newStudentName);
+                    if (!created) {
+                      setStudentAddError(
+                        "Student name must be one word and unique.",
+                      );
+                      return;
+                    }
+                    setLatestCredentials({
+                      name: created.student.name,
+                      email: created.credentials.email,
+                      password: created.credentials.password,
+                    });
+                    setNewStudentName("");
+                  }}
+                  className="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  Add Student
+                </button>
+              </div>
+
+              {latestCredentials ? (
+                <div
+                  className={[
+                    "mt-2 rounded-md border px-2.5 py-2 text-xs",
+                    isDarkMode
+                      ? "border-zinc-800 bg-zinc-900 text-emerald-400"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-800",
+                  ].join(" ")}
+                >
+                  <p className="font-medium">{latestCredentials.name} created</p>
+                  <p>Email: {latestCredentials.email}</p>
+                  <p>Password: {latestCredentials.password}</p>
+                </div>
+              ) : null}
+              {studentAddError ? (
+                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                  {studentAddError}
+                </div>
+              ) : null}
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
                 <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">
@@ -251,13 +313,20 @@ export function DashboardHome({
                 return (
                   <div
                     key={chapterTitle}
-                    className={[
-                      "rounded-xl border px-3 py-2.5 transition",
-                      isMilestone
-                        ? "border-zinc-300 bg-zinc-100/80"
-                        : "border-zinc-200 bg-zinc-50",
-                    ].join(" ")}
+                    className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 transition"
                   >
+                    {isMilestone ? (
+                      <div
+                        className={[
+                          "mb-2 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]",
+                          isDarkMode
+                            ? "border-zinc-800 bg-zinc-900 text-emerald-400"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                        ].join(" ")}
+                      >
+                        Current Student Chapter
+                      </div>
+                    ) : null}
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm text-zinc-700">{chapterTitle}</p>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -266,9 +335,7 @@ export function DashboardHome({
                           onClick={() => onSetMilestoneChapter?.(chapterTitle)}
                           className={[
                             "rounded-md border px-2.5 py-1 text-xs font-medium transition",
-                            isMilestone
-                              ? "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800"
-                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100",
+                            "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100",
                           ].join(" ")}
                         >
                           {isMilestone ? "Tagged" : "Tag"}
@@ -287,14 +354,22 @@ export function DashboardHome({
 
                     {chapterTags.length > 0 ? (
                       <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        {chapterTags.map((taggedStudent) => (
+                        {chapterTags.map((taggedStudent) => {
+                          const isCurrentStudent =
+                            taggedStudent.email.trim().toLowerCase() ===
+                            (selectedStudentEmail ?? "").trim().toLowerCase();
+                          return (
                           <span
                             key={`${chapterTitle}-${taggedStudent.email}`}
-                            className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-700"
+                            className={[
+                              "rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium",
+                              isCurrentStudent ? "text-emerald-600" : "text-zinc-700",
+                            ].join(" ")}
                           >
                             {taggedStudent.name}
                           </span>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : null}
 
@@ -306,7 +381,9 @@ export function DashboardHome({
                         className={[
                           "rounded-md border px-2.5 py-1 text-xs",
                           isUnlocked
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            ? isDarkMode
+                              ? "border-zinc-800 bg-zinc-900 text-emerald-400"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : "border-zinc-200 bg-white text-zinc-600",
                           isAlwaysUnlocked || !canUseCustomUnlock
                             ? "cursor-not-allowed opacity-70"

@@ -31,6 +31,8 @@ type Action =
   | { type: "remove"; id: string }
   | { type: "select"; id: string }
   | { type: "toggle"; id: string }
+  | { type: "collapseAll" }
+  | { type: "reveal"; id: string }
   | { type: "toggleLock"; id: string }
   | { type: "updateTitle"; id: string; title: string }
   | { type: "updateContent"; id: string; content: string };
@@ -49,6 +51,34 @@ function reducer(state: FlowState, action: Action): FlowState {
       return selectNodeInState(state, action.id);
     case "toggle":
       return toggleExpandedInState(state, action.id);
+    case "collapseAll":
+      return {
+        ...state,
+        nodes: Object.fromEntries(
+          Object.entries(state.nodes).map(([id, node]) => [
+            id,
+            node.kind === "folder" && node.isExpanded ? { ...node, isExpanded: false } : node,
+          ]),
+        ),
+      };
+    case "reveal": {
+      const targetNode = state.nodes[action.id];
+      if (!targetNode) return state;
+
+      const nodes = { ...state.nodes };
+      let parentId = targetNode.parentId;
+
+      while (parentId) {
+        const parentNode = nodes[parentId];
+        if (!parentNode) break;
+        if (parentNode.kind === "folder" && !parentNode.isExpanded) {
+          nodes[parentId] = { ...parentNode, isExpanded: true };
+        }
+        parentId = parentNode.parentId;
+      }
+
+      return selectNodeInState({ ...state, nodes }, action.id);
+    }
     case "toggleLock":
       return toggleLockedInState(state, action.id);
     case "updateTitle":
@@ -246,6 +276,8 @@ type FlowStateContextValue = {
   removeNode: (id: string) => void;
   selectNode: (id: string) => void;
   toggleExpanded: (id: string) => void;
+  collapseAllFolders: () => void;
+  revealNode: (id: string) => void;
   toggleLock: (id: string) => void;
   updateTitle: (id: string, title: string) => void;
   updateContent: (id: string, content: string) => void;
@@ -301,6 +333,8 @@ export function FlowStateProvider({
   const removeNode = useCallback((id: string) => dispatch({ type: "remove", id }), []);
   const selectNode = useCallback((id: string) => dispatch({ type: "select", id }), []);
   const toggleExpanded = useCallback((id: string) => dispatch({ type: "toggle", id }), []);
+  const collapseAllFolders = useCallback(() => dispatch({ type: "collapseAll" }), []);
+  const revealNode = useCallback((id: string) => dispatch({ type: "reveal", id }), []);
   const toggleLock = useCallback((id: string) => dispatch({ type: "toggleLock", id }), []);
   const updateTitle = useCallback(
     (id: string, title: string) => dispatch({ type: "updateTitle", id, title }),
@@ -321,6 +355,8 @@ export function FlowStateProvider({
       removeNode,
       selectNode,
       toggleExpanded,
+      collapseAllFolders,
+      revealNode,
       toggleLock,
       updateTitle,
       updateContent,
@@ -330,9 +366,11 @@ export function FlowStateProvider({
       isHydrated,
       moveNode,
       removeNode,
+      revealNode,
       selectNode,
       state,
       toggleExpanded,
+      collapseAllFolders,
       toggleLock,
       updateContent,
       updateTitle,

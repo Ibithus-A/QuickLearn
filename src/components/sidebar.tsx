@@ -1,11 +1,11 @@
 "use client";
 
-import { FlowLogoIcon, FolderIcon, PlusIcon } from "@/components/icons";
+import { FlowLogoIcon, FolderIcon, MoonIcon, PlusIcon, SunIcon } from "@/components/icons";
 import { SidebarNode } from "@/components/sidebar-node";
 import { useFlowState } from "@/context/flowstate-context";
 import { A_LEVEL_MATHS_TITLE } from "@/lib/seed";
 import type { DragEvent } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type SidebarProps = {
   onOpenDashboard?: () => void;
@@ -36,9 +36,11 @@ export function Sidebar({
   role = "tutor",
   unlockedChapterTitles = [],
 }: SidebarProps) {
-  const { state, addNode, moveNode, isHydrated, selectNode } = useFlowState();
+  const { state, addNode, moveNode, isHydrated, selectNode, collapseAllFolders, revealNode } =
+    useFlowState();
   const isStudent = role === "student";
   const canManage = !isStudent;
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { visibleRootIds, visibleNodeIds } = useMemo(() => {
     if (!isStudent) {
@@ -90,6 +92,38 @@ export function Sidebar({
     moveNode(draggedId, { type: "root" });
   };
 
+  const matchingPages = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return [];
+
+    const pages = Object.values(state.nodes).filter((node) => {
+      if (node.kind !== "page") return false;
+      if (isStudent && !visibleNodeIds.has(node.id)) return false;
+      return node.title.toLowerCase().includes(normalizedQuery);
+    });
+
+    return pages.slice(0, 8).map((node) => {
+      const breadcrumb: string[] = [];
+      let cursor = node.parentId;
+      while (cursor) {
+        const parent = state.nodes[cursor];
+        if (!parent) break;
+        breadcrumb.unshift(parent.title);
+        cursor = parent.parentId;
+      }
+      return {
+        id: node.id,
+        title: node.title,
+        path: breadcrumb.join(" / "),
+      };
+    });
+  }, [isStudent, searchQuery, state.nodes, visibleNodeIds]);
+
+  const handleJumpToNode = (nodeId: string) => {
+    revealNode(nodeId);
+    setSearchQuery("");
+  };
+
   return (
     <aside className="flex h-full min-h-0 flex-col border-r border-zinc-200 bg-[var(--surface-sidebar)]">
       <div className="border-b border-zinc-200 px-3 py-3">
@@ -104,6 +138,17 @@ export function Sidebar({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {onToggleDarkMode ? (
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition hover:bg-zinc-50"
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+              </button>
+            ) : null}
             {canManage ? (
               <>
                 <button
@@ -150,17 +195,57 @@ export function Sidebar({
             <span className="text-xs text-zinc-500">Open</span>
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={collapseAllFolders}
+          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+        >
+          <span>Close All Folders</span>
+          <span className="text-xs text-zinc-500">Auto</span>
+        </button>
 
-        {onToggleDarkMode ? (
-          <button
-            type="button"
-            onClick={onToggleDarkMode}
-            className="mx-2 mb-3 flex w-[calc(100%-1rem)] items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
-          >
-            <span>Dark Mode</span>
-            <span className="text-xs text-zinc-500">{isDarkMode ? "On" : "Off"}</span>
-          </button>
-        ) : null}
+        <div className="mx-2 mb-2 rounded-lg border border-zinc-200 bg-white p-2">
+          <label htmlFor="sidebar-search" className="mb-1 block text-xs font-medium text-zinc-500">
+            Find Page
+          </label>
+          <input
+            id="sidebar-search"
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && matchingPages[0]) {
+                event.preventDefault();
+                handleJumpToNode(matchingPages[0].id);
+              }
+            }}
+            placeholder="Search by keywords..."
+            className="h-8 w-full rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+          />
+          {searchQuery.trim() ? (
+            <div className="mt-2 space-y-1">
+              {matchingPages.length > 0 ? (
+                matchingPages.map((result) => (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onClick={() => handleJumpToNode(result.id)}
+                    className="flex w-full flex-col rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-left hover:bg-zinc-100"
+                  >
+                    <span className="truncate text-sm font-medium text-zinc-800">{result.title}</span>
+                    {result.path ? (
+                      <span className="truncate text-xs text-zinc-500">{result.path}</span>
+                    ) : null}
+                  </button>
+                ))
+              ) : (
+                <p className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-500">
+                  No matching pages.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
 
         {visibleRootIds.length === 0 ? (
           <div className="mx-2 mt-2 rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-center">

@@ -1,7 +1,8 @@
 "use client";
 
 import { CloseIcon, FlowLogoIcon } from "@/components/icons";
-import { TUTOR_ACCOUNT, authenticateCredentials } from "@/lib/auth";
+import { TUTOR_ACCOUNT, authenticateCredentials, type StudentAccount } from "@/lib/auth";
+import { MoonIcon, SunIcon } from "@/components/icons";
 import type { AuthenticatedAccount, UserRole } from "@/types/auth";
 import { useState } from "react";
 
@@ -9,12 +10,18 @@ type SignInPortalProps = {
   onContinue: (account: AuthenticatedAccount) => void;
   onClose: () => void;
   showCloseButton?: boolean;
+  students: StudentAccount[];
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 };
 
 export function SignInPortal({
   onClose,
   onContinue,
   showCloseButton = true,
+  students,
+  isDarkMode = false,
+  onToggleDarkMode,
 }: SignInPortalProps) {
   const [role, setRole] = useState<UserRole>("student");
   const [email, setEmail] = useState("");
@@ -23,7 +30,7 @@ export function SignInPortal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const account = authenticateCredentials(role, email, password);
+    const account = authenticateCredentials(role, email, password, students);
 
     if (!account) {
       setError("Invalid credentials for the selected account.");
@@ -36,7 +43,7 @@ export function SignInPortal({
 
   return (
     <section className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 p-3 backdrop-blur-[1px] md:p-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_20px_50px_rgba(9,9,11,0.08)] transition-all duration-300 md:p-6">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_20px_50px_rgba(9,9,11,0.08)] transition-all duration-200 md:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white">
@@ -47,16 +54,29 @@ export function SignInPortal({
               <p className="text-xs text-zinc-500">Tutor & Student Sign In</p>
             </div>
           </div>
-          {showCloseButton ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-              aria-label="Close sign in portal"
-            >
-              <CloseIcon className="h-4 w-4" />
-            </button>
-          ) : null}
+          <div className="flex items-center gap-1.5">
+            {onToggleDarkMode ? (
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+              </button>
+            ) : null}
+            {showCloseButton ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                aria-label="Close sign in portal"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
@@ -110,7 +130,7 @@ export function SignInPortal({
               placeholder={
                 role === "tutor"
                   ? TUTOR_ACCOUNT.email
-                  : "student@quicklearn.com"
+                  : (students[0]?.email ?? "Alex@QuickLearn.com")
               }
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
               autoComplete="email"

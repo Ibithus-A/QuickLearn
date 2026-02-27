@@ -92,10 +92,10 @@ button,
 input,
 textarea {
   transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 200ms ease,
-    color 140ms ease;
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 150ms ease,
+    color 110ms ease;
 }
 
 @keyframes fadeIn {

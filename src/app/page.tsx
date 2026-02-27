@@ -5,11 +5,13 @@ import { EditorPane } from "@/components/editor-pane";
 import { SignInPortal } from "@/components/sign-in-portal";
 import { Sidebar } from "@/components/sidebar";
 import { FlowStateProvider } from "@/context/flowstate-context";
+import { normalizeEmail } from "@/lib/auth";
 import { useStudentProgress } from "@/lib/hooks/use-student-progress";
+import { useStudents } from "@/lib/hooks/use-students";
 import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
 import { useTheme } from "@/lib/hooks/use-theme";
 import type { AuthenticatedAccount } from "@/types/auth";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type AppView = "workspace" | "dashboard";
 
@@ -17,9 +19,16 @@ export default function HomePage() {
   const [view, setView] = useState<AppView>("workspace");
   const [isSidebarAutoOpen, setIsSidebarAutoOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedAccount | null>(null);
+  const { students, addStudent, deleteStudent } = useStudents();
+  const effectiveCurrentUser = useMemo(() => {
+    if (currentUser?.role !== "student") return currentUser;
+    const isActiveStudent = students.some(
+      (student) => normalizeEmail(student.email) === normalizeEmail(currentUser.email),
+    );
+    return isActiveStudent ? currentUser : null;
+  }, [currentUser, students]);
   const {
     selectedStudentEmail,
-    selectedStudent,
     activeStudentUnlocks,
     currentStudentStats,
     selectedStudentMilestone,
@@ -28,8 +37,7 @@ export default function HomePage() {
     toggleChapterForSelectedStudent,
     setMilestoneForSelectedStudent,
     chapterTitles,
-    students,
-  } = useStudentProgress(currentUser);
+  } = useStudentProgress(effectiveCurrentUser, students);
   const { sidebarWidth, startResize, isResizing } = useSidebarResize();
   const { isDarkMode, setIsDarkMode } = useTheme();
 
@@ -53,26 +61,35 @@ export default function HomePage() {
     setView("workspace");
   };
 
+  const handleCreateStudent = (name: string) => addStudent(name);
+
+  const handleDeleteSelectedStudent = () => {
+    if (!selectedStudentEmail) return;
+    deleteStudent(selectedStudentEmail);
+  };
+
   return (
     <FlowStateProvider>
-      <main
-        className={`h-screen w-screen bg-[var(--surface-app)] ${isDarkMode ? "theme-dark" : ""}`}
-      >
-        {!currentUser ? (
+      <main className="h-screen w-screen bg-[var(--surface-app)]">
+        {!effectiveCurrentUser ? (
           <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
             <SignInPortal
               onClose={() => {}}
               onContinue={handleContinueFromSignIn}
               showCloseButton={false}
+              students={students}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={() => setIsDarkMode((value) => !value)}
             />
           </div>
         ) : view === "dashboard" ? (
           <DashboardHome
-            name={currentUser.name}
-            role={currentUser.role}
+            name={effectiveCurrentUser.name}
+            role={effectiveCurrentUser.role}
             stats={currentStudentStats}
-            activeStudentName={selectedStudent?.name}
             onOpenWorkspace={handleOpenWorkspaceFromDashboard}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={() => setIsDarkMode((value) => !value)}
             onSignOut={handleSignOut}
             onSwitchAccount={handleSignOut}
             chapterTitles={chapterTitles}
@@ -84,6 +101,8 @@ export default function HomePage() {
             onSelectStudent={selectStudent}
             onSetMilestoneChapter={setMilestoneForSelectedStudent}
             onToggleChapter={toggleChapterForSelectedStudent}
+            onAddStudent={handleCreateStudent}
+            onDeleteSelectedStudent={handleDeleteSelectedStudent}
           />
         ) : (
           <div className="relative h-full w-full overflow-hidden bg-[var(--surface-panel)]">
@@ -122,7 +141,7 @@ export default function HomePage() {
                   onOpenDashboard={handleOpenDashboardFromSidebar}
                   isDarkMode={isDarkMode}
                   onToggleDarkMode={() => setIsDarkMode((value) => !value)}
-                  role={currentUser.role}
+                  role={effectiveCurrentUser.role}
                   unlockedChapterTitles={activeStudentUnlocks}
                 />
                 <div
@@ -136,7 +155,7 @@ export default function HomePage() {
             </div>
 
             <div className="h-full">
-              <EditorPane role={currentUser.role} />
+              <EditorPane role={effectiveCurrentUser.role} />
             </div>
           </div>
         )}
