@@ -8,10 +8,12 @@ import { FlowStateProvider } from "@/context/flowstate-context";
 import { normalizeEmail } from "@/lib/auth";
 import { useStudentProgress } from "@/lib/hooks/use-student-progress";
 import { useStudents } from "@/lib/hooks/use-students";
+import { accountFromUser } from "@/lib/supabase/account";
+import { createClient } from "@/lib/supabase/client";
 import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
 import { useTheme } from "@/lib/hooks/use-theme";
 import type { AuthenticatedAccount } from "@/types/auth";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type AppView = "workspace" | "dashboard";
 
@@ -41,12 +43,46 @@ export default function HomePage() {
   const { sidebarWidth, startResize, isResizing } = useSidebarResize();
   const { isDarkMode, setIsDarkMode } = useTheme();
 
+  useEffect(() => {
+    const supabase = createClient();
+    let isMounted = true;
+
+    const hydrateSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!isMounted) return;
+
+      if (data.session?.user) {
+        setCurrentUser(accountFromUser(data.session.user));
+        setView("dashboard");
+      }
+    };
+
+    void hydrateSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser(accountFromUser(session.user));
+        return;
+      }
+      setCurrentUser(null);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
     setCurrentUser(account);
     setView("dashboard");
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setView("dashboard");
   };
@@ -77,7 +113,6 @@ export default function HomePage() {
               onClose={() => {}}
               onContinue={handleContinueFromSignIn}
               showCloseButton={false}
-              students={students}
               isDarkMode={isDarkMode}
               onToggleDarkMode={() => setIsDarkMode((value) => !value)}
             />

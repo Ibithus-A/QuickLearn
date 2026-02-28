@@ -1,44 +1,97 @@
 "use client";
 
 import { CloseIcon, FlowLogoIcon } from "@/components/icons";
-import { TUTOR_ACCOUNT, authenticateCredentials, type StudentAccount } from "@/lib/auth";
 import { MoonIcon, SunIcon } from "@/components/icons";
-import type { AuthenticatedAccount, UserRole } from "@/types/auth";
+import { accountFromUser } from "@/lib/supabase/account";
+import { createClient } from "@/lib/supabase/client";
+import type { AuthenticatedAccount } from "@/types/auth";
 import { useState } from "react";
 
 type SignInPortalProps = {
   onContinue: (account: AuthenticatedAccount) => void;
   onClose: () => void;
   showCloseButton?: boolean;
-  students: StudentAccount[];
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
 };
+
+type AuthMode = "sign-in" | "sign-up";
 
 export function SignInPortal({
   onClose,
   onContinue,
   showCloseButton = true,
-  students,
   isDarkMode = false,
   onToggleDarkMode,
 }: SignInPortalProps) {
-  const [role, setRole] = useState<UserRole>("student");
+  const [mode, setMode] = useState<AuthMode>("sign-in");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const account = authenticateCredentials(role, email, password, students);
+    const supabase = createClient();
+    setError("");
+    setInfo("");
+    setIsSubmitting(true);
 
-    if (!account) {
-      setError("Invalid credentials for the selected account.");
+    if (mode === "sign-in") {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      setIsSubmitting(false);
+
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      if (!data.user) {
+        setError("Unable to sign in. Please try again.");
+        return;
+      }
+
+      onContinue(accountFromUser(data.user));
       return;
     }
 
-    setError("");
-    onContinue(account);
+    const normalizedName = name.trim();
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          role: "student",
+          full_name: normalizedName,
+        },
+      },
+    });
+
+    setIsSubmitting(false);
+
+    if (signUpError) {
+      setError(signUpError.message);
+      return;
+    }
+
+    if (!data.user) {
+      setError("Unable to create account. Please try again.");
+      return;
+    }
+
+    if (!data.session) {
+      setInfo("Account created. Check your email to verify your account, then sign in.");
+      setMode("sign-in");
+      return;
+    }
+
+    onContinue(accountFromUser(data.user));
   };
 
   return (
@@ -51,7 +104,7 @@ export function SignInPortal({
             </div>
             <div>
               <p className="text-lg font-semibold text-zinc-900">QuickLearn Portal</p>
-              <p className="text-xs text-zinc-500">Tutor & Student Sign In</p>
+              <p className="text-xs text-zinc-500">Secure Sign In with Supabase</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -83,32 +136,34 @@ export function SignInPortal({
           <button
             type="button"
             onClick={() => {
-              setRole("student");
+              setMode("sign-in");
               setError("");
+              setInfo("");
             }}
             className={[
               "rounded-md px-3 py-2 text-sm transition",
-              role === "student"
+              mode === "sign-in"
                 ? "bg-white font-medium text-zinc-900 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-700",
             ].join(" ")}
           >
-            Student
+            Sign In
           </button>
           <button
             type="button"
             onClick={() => {
-              setRole("tutor");
+              setMode("sign-up");
               setError("");
+              setInfo("");
             }}
             className={[
               "rounded-md px-3 py-2 text-sm transition",
-              role === "tutor"
+              mode === "sign-up"
                 ? "bg-white font-medium text-zinc-900 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-700",
             ].join(" ")}
           >
-            Tutor
+            Sign Up
           </button>
         </div>
 
@@ -116,6 +171,30 @@ export function SignInPortal({
           className="space-y-3"
           onSubmit={handleSubmit}
         >
+          {mode === "sign-up" ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-600">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setError("");
+                  setInfo("");
+                }}
+                placeholder="Your name"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                autoComplete="name"
+                required
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                New sign-ups are created as student accounts.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-600">
               Email
@@ -126,12 +205,9 @@ export function SignInPortal({
               onChange={(event) => {
                 setEmail(event.target.value);
                 setError("");
+                setInfo("");
               }}
-              placeholder={
-                role === "tutor"
-                  ? TUTOR_ACCOUNT.email
-                  : (students[0]?.email ?? "Alex@QuickLearn.com")
-              }
+              placeholder="you@example.com"
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
               autoComplete="email"
               required
@@ -148,10 +224,11 @@ export function SignInPortal({
               onChange={(event) => {
                 setPassword(event.target.value);
                 setError("");
+                setInfo("");
               }}
               placeholder="••••••••"
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
-              autoComplete="current-password"
+              autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
               required
             />
           </div>
@@ -162,11 +239,22 @@ export function SignInPortal({
             </p>
           ) : null}
 
+          {info ? (
+            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              {info}
+            </p>
+          ) : null}
+
           <button
             type="submit"
+            disabled={isSubmitting}
             className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
           >
-            Continue to Workspace
+            {isSubmitting
+              ? "Please wait..."
+              : mode === "sign-up"
+                ? "Create Account"
+                : "Continue to Workspace"}
           </button>
         </form>
       </div>

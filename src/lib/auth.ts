@@ -1,5 +1,3 @@
-import type { AuthenticatedAccount, UserRole } from "@/types/auth";
-
 export type StudentAccount = {
   name: string;
   email: string;
@@ -17,22 +15,6 @@ const DEFAULT_STUDENT_NAMES = [
   "Parker",
   "Riley",
 ] as const;
-
-type AccountProfile = {
-  name: string;
-  email: string;
-  password: string;
-};
-
-export const TUTOR_ACCOUNT: AccountProfile = {
-  name: "Tutor",
-  email: "Tutor@QuickLearn.com",
-  password: "Tutor",
-};
-
-function toCredentialToken(value: string): string {
-  return value.trim().split(/\s+/)[0].replace(/[^a-z0-9]/gi, "").toLowerCase();
-}
 
 function toDisplayName(value: string): string {
   const token = value.trim().split(/\s+/)[0].replace(/[^a-z0-9]/gi, "");
@@ -67,54 +49,3 @@ export const DEFAULT_STUDENT_ACCOUNTS: StudentAccount[] = DEFAULT_STUDENT_NAMES.
   name,
   email: buildStudentEmail(name),
 }));
-
-function getStudentFromCredentials(
-  students: StudentAccount[],
-  email: string,
-  password: string,
-): AuthenticatedAccount | null {
-  const normalizedEmail = normalizeEmail(email);
-  const studentAccount = students.find(
-    (student) => normalizeEmail(student.email) === normalizedEmail,
-  );
-  if (!studentAccount) return null;
-
-  // Default test credentials reference:
-  // Alex@QuickLearn.com -> Alex
-  // Blake@QuickLearn.com -> Blake
-  // Casey@QuickLearn.com -> Casey
-  // Drew@QuickLearn.com -> Drew
-  // Eden@QuickLearn.com -> Eden
-  // Harper@QuickLearn.com -> Harper
-  // Jordan@QuickLearn.com -> Jordan
-  // Logan@QuickLearn.com -> Logan
-  // Parker@QuickLearn.com -> Parker
-  // Riley@QuickLearn.com -> Riley
-  const expectedPassword = toCredentialToken(buildStudentPassword(studentAccount.name));
-  if (toCredentialToken(password) !== expectedPassword) return null;
-
-  return {
-    role: "student",
-    name: studentAccount.name,
-    email: studentAccount.email,
-  };
-}
-
-export function authenticateCredentials(
-  role: UserRole,
-  email: string,
-  password: string,
-  students: StudentAccount[] = DEFAULT_STUDENT_ACCOUNTS,
-): AuthenticatedAccount | null {
-  if (role === "tutor") {
-    const isTutorMatch =
-      normalizeEmail(email) === normalizeEmail(TUTOR_ACCOUNT.email) &&
-      toCredentialToken(password) === toCredentialToken(TUTOR_ACCOUNT.password);
-
-    return isTutorMatch
-      ? { role: "tutor", name: TUTOR_ACCOUNT.name, email: TUTOR_ACCOUNT.email }
-      : null;
-  }
-
-  return getStudentFromCredentials(students, email, password);
-}

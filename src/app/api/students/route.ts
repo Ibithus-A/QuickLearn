@@ -6,6 +6,8 @@ import {
   normalizeStudentName,
   type StudentAccount,
 } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import type { User } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,12 +55,36 @@ async function writeStudents(students: StudentAccount[]) {
   await fs.writeFile(STUDENTS_FILE_PATH, `${JSON.stringify(sorted, null, 2)}\n`, "utf8");
 }
 
+async function getAuthenticatedUser(): Promise<User | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
+}
+
 export async function GET() {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const students = await readStudents();
   return Response.json({ students });
 }
 
 export async function PUT(request: Request) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const role = user.user_metadata?.role === "tutor" ? "tutor" : "student";
+  if (role !== "tutor") {
+    return Response.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   try {
     const body = (await request.json()) as { students?: unknown };
     const students = sanitizeStudents(body.students);
