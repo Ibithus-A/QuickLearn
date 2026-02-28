@@ -21,7 +21,7 @@ export default function HomePage() {
   const [view, setView] = useState<AppView>("workspace");
   const [isSidebarAutoOpen, setIsSidebarAutoOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedAccount | null>(null);
-  const { students, addStudent, deleteStudent } = useStudents();
+  const { students, addStudent, deleteStudent } = useStudents(currentUser?.email);
   const effectiveCurrentUser = useMemo(() => {
     if (currentUser?.role !== "student") return currentUser;
     const isActiveStudent = students.some(
@@ -97,11 +97,12 @@ export default function HomePage() {
     setView("workspace");
   };
 
-  const handleCreateStudent = (name: string) => addStudent(name);
+  const handleCreateStudent = async (name: string, password: string) =>
+    addStudent(name, password);
 
-  const handleDeleteSelectedStudent = () => {
+  const handleDeleteSelectedStudent = async () => {
     if (!selectedStudentEmail) return;
-    deleteStudent(selectedStudentEmail);
+    await deleteStudent(selectedStudentEmail);
   };
 
   return (

@@ -177,7 +177,7 @@ export function Sidebar({
       </div>
 
       <div
-        className="scroll-slim min-h-0 flex-1 overflow-y-auto px-2 py-2"
+        className="scroll-slim min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-2"
         onDragOver={(event) => {
           if (!canManage) return;
           event.preventDefault();
@@ -189,7 +189,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onOpenDashboard}
-            className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            className="mb-2 flex w-full max-w-full items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
           >
             <span>Dashboard</span>
             <span className="text-xs text-zinc-500">Open</span>
@@ -198,13 +198,13 @@ export function Sidebar({
         <button
           type="button"
           onClick={collapseAllFolders}
-          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+          className="mb-2 flex w-full max-w-full items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
         >
           <span>Close All Folders</span>
           <span className="text-xs text-zinc-500">Auto</span>
         </button>
 
-        <div className="mx-2 mb-2 rounded-lg border border-zinc-200 bg-white p-2">
+        <div className="mb-2 w-full max-w-full rounded-lg border border-zinc-200 bg-white p-2">
           <label htmlFor="sidebar-search" className="mb-1 block text-xs font-medium text-zinc-500">
             Find Page
           </label>
@@ -248,7 +248,7 @@ export function Sidebar({
         </div>
 
         {visibleRootIds.length === 0 ? (
-          <div className="mx-2 mt-2 rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-center">
+          <div className="mt-2 w-full max-w-full rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-center">
             <p className="text-sm font-medium text-zinc-700">Your workspace is empty</p>
             <p className="mt-1 text-xs text-zinc-500">
               Create a page or folder to get started.

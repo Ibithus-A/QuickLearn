@@ -26,11 +26,11 @@ type DashboardHomeProps = {
   onSelectStudent?: (email: string) => void;
   onSetMilestoneChapter?: (chapterTitle: string) => void;
   onToggleChapter?: (chapterTitle: string) => void;
-  onAddStudent?: (name: string) => {
+  onAddStudent?: (name: string, password: string) => Promise<{
     student: { name: string; email: string };
     credentials: { email: string; password: string };
-  } | null;
-  onDeleteSelectedStudent?: () => void;
+  } | null>;
+  onDeleteSelectedStudent?: () => Promise<void>;
 };
 
 export function DashboardHome({
@@ -56,6 +56,7 @@ export function DashboardHome({
 }: DashboardHomeProps) {
   const [activeTab, setActiveTab] = useState<MetricTab>("reviewed");
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentPassword, setNewStudentPassword] = useState("");
   const [latestCredentials, setLatestCredentials] = useState<{
     name: string;
     email: string;
@@ -225,7 +226,9 @@ export function DashboardHome({
                     </label>
                     <button
                       type="button"
-                      onClick={() => onDeleteSelectedStudent?.()}
+                      onClick={() => {
+                        void onDeleteSelectedStudent?.();
+                      }}
                       className={[
                         "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
                         isDarkMode
@@ -247,14 +250,21 @@ export function DashboardHome({
                   placeholder="New student name"
                   className="w-full max-w-[240px] rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
                 />
+                <input
+                  type="password"
+                  value={newStudentPassword}
+                  onChange={(event) => setNewStudentPassword(event.target.value)}
+                  placeholder="Set student password"
+                  className="w-full max-w-[240px] rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                />
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setStudentAddError(null);
-                    const created = onAddStudent?.(newStudentName);
+                    const created = await onAddStudent?.(newStudentName, newStudentPassword);
                     if (!created) {
                       setStudentAddError(
-                        "Student name must be one word and unique.",
+                        "Unable to create student. Use a unique one-word name and password (8+ chars).",
                       );
                       return;
                     }
@@ -264,6 +274,7 @@ export function DashboardHome({
                       password: created.credentials.password,
                     });
                     setNewStudentName("");
+                    setNewStudentPassword("");
                   }}
                   className="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
                 >

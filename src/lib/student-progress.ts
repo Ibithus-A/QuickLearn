@@ -1,25 +1,12 @@
-import {
-  buildStudentEmail,
-  getDefaultStudentName,
-  normalizeEmail,
-  type StudentAccount,
-} from "@/lib/auth";
+import { normalizeEmail, type StudentAccount } from "@/lib/auth";
 import { A_LEVEL_MATHS_CHAPTER_TITLES } from "@/lib/seed";
 import type { StudentDailyStats } from "@/types/dashboard";
 
 export const CHAPTER_ONE_TITLE = "Chapter 1: Algebra 1";
 export const CHAPTER_TITLES = A_LEVEL_MATHS_CHAPTER_TITLES;
-const LEGACY_STUDENT_EMAIL_PATTERN = /^student(\d+)@quicklearn\.com$/i;
 
 function normalizeStudentProgressEmail(email: string): string {
-  const normalized = normalizeEmail(email);
-  const legacyMatch = normalized.match(LEGACY_STUDENT_EMAIL_PATTERN);
-  if (!legacyMatch) return normalized;
-
-  const studentNumber = Number(legacyMatch[1]);
-  if (!Number.isInteger(studentNumber) || studentNumber <= 0) return normalized;
-
-  return normalizeEmail(buildStudentEmail(getDefaultStudentName(studentNumber - 1)));
+  return normalizeEmail(email);
 }
 
 export function ensureChapterOneUnlocked(

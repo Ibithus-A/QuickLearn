@@ -1,146 +1,131 @@
 "use client";
 
-import {
-  buildStudentEmail,
-  buildStudentPassword,
-  DEFAULT_STUDENT_ACCOUNTS,
-  getDefaultStudentName,
-  normalizeEmail,
-  normalizeStudentName,
-  type StudentAccount,
-} from "@/lib/auth";
-import { STUDENT_ACCOUNTS_STORAGE_KEY } from "@/lib/constants/storage";
-import { usePersistedState } from "@/lib/hooks/use-persisted-state";
-import { useEffect, useMemo } from "react";
-
-const LEGACY_STUDENT_EMAIL_PATTERN = /^student(\d+)@quicklearn\.com$/i;
+import { normalizeEmail, normalizeStudentName, type StudentAccount } from "@/lib/auth";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function sortStudents(students: StudentAccount[]) {
   return [...students].sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function areStudentsEqual(left: StudentAccount[], right: StudentAccount[]) {
-  if (left.length !== right.length) return false;
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index].name !== right[index].name) return false;
-    if (left[index].email !== right[index].email) return false;
-  }
-  return true;
-}
-
 function sanitizeStudents(value: unknown): StudentAccount[] {
-  if (!Array.isArray(value)) return sortStudents(DEFAULT_STUDENT_ACCOUNTS);
-  if (value.length === 0) return [];
+  if (!Array.isArray(value)) return [];
 
-  const uniqueByName = new Map<string, StudentAccount>();
+  const unique = new Map<string, StudentAccount>();
   for (const entry of value) {
     if (!entry || typeof entry !== "object") continue;
     const candidate = entry as Partial<StudentAccount>;
     if (typeof candidate.name !== "string" || typeof candidate.email !== "string") continue;
 
-    let normalizedName = normalizeStudentName(candidate.name);
-    if (!normalizedName) continue;
+    const name = normalizeStudentName(candidate.name);
+    const email = normalizeEmail(candidate.email);
+    if (!name || !email) continue;
 
-    const legacyMatch = normalizeEmail(candidate.email).match(LEGACY_STUDENT_EMAIL_PATTERN);
-    if (/^student\d+$/i.test(normalizedName) && legacyMatch) {
-      const number = Number(legacyMatch[1]);
-      normalizedName = getDefaultStudentName(number - 1);
-    }
-
-    const key = normalizedName.toLowerCase();
-    if (uniqueByName.has(key)) continue;
-
-    uniqueByName.set(key, {
-      name: normalizedName,
-      email: buildStudentEmail(normalizedName),
-    });
+    const key = email.toLowerCase();
+    if (unique.has(key)) continue;
+    unique.set(key, { name, email });
   }
 
-  if (uniqueByName.size === 0) return [];
-  return sortStudents(Array.from(uniqueByName.values()));
+  return sortStudents(Array.from(unique.values()));
 }
 
-export function useStudents() {
-  const [students, setStudents] = usePersistedState<StudentAccount[]>({
-    key: STUDENT_ACCOUNTS_STORAGE_KEY,
-    defaultValue: sortStudents(DEFAULT_STUDENT_ACCOUNTS),
-    serialize: JSON.stringify,
-    deserialize: (raw) => {
-      try {
-        return sanitizeStudents(JSON.parse(raw) as unknown);
-      } catch {
-        return sortStudents(DEFAULT_STUDENT_ACCOUNTS);
+type AddStudentResult = {
+  student: StudentAccount;
+  credentials: { email: string; password: string };
+} | null;
+
+export function useStudents(currentUserEmail?: string | null) {
+  const [students, setStudents] = useState<StudentAccount[]>([]);
+
+  const hydrateStudents = useCallback(async () => {
+    try {
+      const response = await fetch("/api/students", { cache: "no-store" });
+      if (!response.ok) {
+        if (response.status === 401) {
+          setStudents([]);
+        }
+        return;
       }
-    },
-  });
 
-  const persistStudentsToFile = (nextStudents: StudentAccount[]) => {
-    void fetch("/api/students", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ students: nextStudents }),
-    });
-  };
+      const payload = (await response.json()) as { students?: unknown };
+      setStudents(sanitizeStudents(payload.students));
+    } catch {
+      // Keep last known local state on transient failures.
+    }
+  }, []);
 
-  const addStudent = (name: string) => {
+  const addStudent = useCallback(async (name: string, password: string): Promise<AddStudentResult> => {
     const normalizedName = normalizeStudentName(name);
+    const normalizedPassword = password.trim();
     if (!normalizedName) return null;
+    if (normalizedPassword.length < 8) return null;
+    try {
+      const response = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: normalizedName, password: normalizedPassword }),
+      });
 
-    const duplicate = students.some(
-      (student) => student.name.toLowerCase() === normalizedName.toLowerCase(),
-    );
-    if (duplicate) return null;
+      if (!response.ok) return null;
+      const payload = (await response.json()) as {
+        student?: StudentAccount;
+        credentials?: { email?: string; password?: string };
+      };
 
-    const nextStudent: StudentAccount = {
-      name: normalizedName,
-      email: buildStudentEmail(normalizedName),
-    };
+      if (
+        !payload.student ||
+        !payload.credentials?.email ||
+        !payload.credentials?.password
+      ) {
+        return null;
+      }
 
-    const nextStudents = sortStudents([...students, nextStudent]);
-    setStudents(nextStudents);
-    persistStudentsToFile(nextStudents);
+      const student = {
+        name: normalizeStudentName(payload.student.name),
+        email: normalizeEmail(payload.student.email),
+      };
+      if (!student.name || !student.email) return null;
 
-    return {
-      student: nextStudent,
-      credentials: {
-        email: nextStudent.email,
-        password: buildStudentPassword(nextStudent.name),
-      },
-    };
-  };
+      setStudents((prev) => sortStudents([...prev, student]));
 
-  const deleteStudent = (email: string) => {
+      return {
+        student,
+        credentials: {
+          email: normalizeEmail(payload.credentials.email),
+          password: payload.credentials.password,
+        },
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const deleteStudent = useCallback(async (email: string) => {
     const normalized = normalizeEmail(email);
-    const nextStudents = sortStudents(
-      students.filter((student) => normalizeEmail(student.email) !== normalized),
-    );
-    setStudents(nextStudents);
-    persistStudentsToFile(nextStudents);
-  };
+    if (!normalized) return;
+    try {
+      const response = await fetch("/api/students", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalized }),
+      });
+
+      if (!response.ok) return;
+      setStudents((prev) =>
+        sortStudents(prev.filter((student) => normalizeEmail(student.email) !== normalized)),
+      );
+    } catch {
+      // Ignore network failures and keep current state.
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void hydrateStudents();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [hydrateStudents, currentUserEmail]);
 
   const stableStudents = useMemo(() => sortStudents(students), [students]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const hydrateFromFile = async () => {
-      try {
-        const response = await fetch("/api/students", { cache: "no-store" });
-        if (!response.ok) return;
-        const payload = (await response.json()) as { students?: unknown };
-        if (cancelled) return;
-        const nextStudents = sanitizeStudents(payload.students);
-        setStudents((prev) => (areStudentsEqual(prev, nextStudents) ? prev : nextStudents));
-      } catch {
-        // Keep local fallback when file sync is unavailable.
-      }
-    };
-
-    void hydrateFromFile();
-    return () => {
-      cancelled = true;
-    };
-  }, [setStudents]);
-
-  return { students: stableStudents, addStudent, deleteStudent };
+  return { students: stableStudents, addStudent, deleteStudent, refreshStudents: hydrateStudents };
 }
