@@ -29,9 +29,13 @@ function sanitizeStudents(value: unknown): StudentAccount[] {
 }
 
 export type AddStudentResult = {
+  ok: true;
   student: StudentAccount;
   invitationSent: boolean;
-} | null;
+} | {
+  ok: false;
+  error: string;
+};
 
 export function useStudents(currentUserEmail?: string | null) {
   const [students, setStudents] = useState<StudentAccount[]>([]);
@@ -57,8 +61,18 @@ export function useStudents(currentUserEmail?: string | null) {
     async (name: string, email: string): Promise<AddStudentResult> => {
     const normalizedName = normalizeStudentName(name);
     const normalizedEmail = normalizeEmail(email);
-    if (!normalizedName) return null;
-    if (!isValidEmail(normalizedEmail)) return null;
+    if (!normalizedName) {
+      return {
+        ok: false,
+        error: "Student name must contain letters or numbers.",
+      };
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      return {
+        ok: false,
+        error: "Student email must be valid.",
+      };
+    }
     try {
       const response = await fetch("/api/students", {
         method: "POST",
@@ -69,30 +83,51 @@ export function useStudents(currentUserEmail?: string | null) {
         }),
       });
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: unknown };
+        return {
+          ok: false,
+          error:
+            typeof payload.error === "string" && payload.error.trim()
+              ? payload.error
+              : "Unable to create student.",
+        };
+      }
       const payload = (await response.json()) as {
         student?: StudentAccount;
         invitationSent?: boolean;
       };
 
       if (!payload.student) {
-        return null;
+        return {
+          ok: false,
+          error: "Unable to create student.",
+        };
       }
 
       const student = {
         name: normalizeStudentName(payload.student.name),
         email: normalizeEmail(payload.student.email),
       };
-      if (!student.name || !student.email) return null;
+      if (!student.name || !student.email) {
+        return {
+          ok: false,
+          error: "Unable to create student.",
+        };
+      }
 
       setStudents((prev) => sortStudents([...prev, student]));
 
       return {
+        ok: true,
         student,
         invitationSent: Boolean(payload.invitationSent),
       };
     } catch {
-      return null;
+      return {
+        ok: false,
+        error: "Network error. Please try again.",
+      };
     }
   }, []);
 

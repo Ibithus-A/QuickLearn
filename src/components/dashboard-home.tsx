@@ -2,6 +2,7 @@
 
 import { FlowLogoIcon, MoonIcon, SunIcon } from "@/components/icons";
 import { CHAPTER_ONE_TITLE } from "@/lib/student-progress";
+import type { AddStudentResult } from "@/lib/hooks/use-students";
 import type { UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
 import { useMemo, useState } from "react";
@@ -26,10 +27,7 @@ type DashboardHomeProps = {
   onSelectStudent?: (email: string) => void;
   onSetMilestoneChapter?: (chapterTitle: string) => void;
   onToggleChapter?: (chapterTitle: string) => void;
-  onAddStudent?: (name: string, email: string) => Promise<{
-    student: { name: string; email: string };
-    invitationSent: boolean;
-  } | null>;
+  onAddStudent?: (name: string, email: string) => Promise<AddStudentResult>;
   onDeleteSelectedStudent?: () => Promise<void>;
 };
 
@@ -266,9 +264,11 @@ export function DashboardHome({
                       newStudentEmail,
                     );
                     if (!created) {
-                      setStudentAddError(
-                        "Unable to create student. Use a unique name and real email.",
-                      );
+                      setStudentAddError("Unable to create student.");
+                      return;
+                    }
+                    if (!created.ok) {
+                      setStudentAddError(created.error);
                       return;
                     }
                     setLatestInvitation({
