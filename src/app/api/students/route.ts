@@ -1,4 +1,10 @@
-import { normalizeEmail, normalizeStudentName, type StudentAccount } from "@/lib/auth";
+import {
+  isValidEmail,
+  normalizeEmail,
+  normalizeStudentName,
+  type StudentAccount,
+} from "@/lib/auth";
+import { validatePassword } from "@/lib/security/password";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
@@ -34,16 +40,30 @@ async function getAuthenticatedUser(): Promise<User | null> {
 }
 
 async function listStudents(): Promise<StudentAccount[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) throw new Error(error.message);
-
-  const students = data.users
+  const allUsers = await listAllUsers();
+  const students = allUsers
     .map((user) => toStudentAccount(user))
     .filter((account): account is StudentAccount => Boolean(account));
 
   students.sort((left, right) => left.name.localeCompare(right.name));
   return students;
+}
+
+async function listAllUsers(): Promise<User[]> {
+  const admin = createAdminClient();
+  const perPage = 1000;
+  let page = 1;
+  const users: User[] = [];
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(error.message);
+    users.push(...data.users);
+    if (data.users.length < perPage) break;
+    page += 1;
+  }
+
+  return users;
 }
 
 export async function GET() {
@@ -99,31 +119,28 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (normalizedPassword.length < 8) {
-      return Response.json(
-        { error: "Student password must be at least 8 characters." },
-        { status: 400 },
-      );
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return Response.json({ error: "Student email must be valid." }, { status: 400 });
+    }
+    const passwordErrors = validatePassword(normalizedPassword, {
+      email: normalizedEmail,
+      displayName: normalizedName,
+    });
+    if (passwordErrors.length > 0) {
+      return Response.json({ error: passwordErrors[0] }, { status: 400 });
     }
 
     const admin = createAdminClient();
-    const existingStudents = await listStudents();
+    const allUsers = await listAllUsers();
+    const existingStudents = allUsers
+      .map((candidate) => toStudentAccount(candidate))
+      .filter((candidate): candidate is StudentAccount => Boolean(candidate));
     const existingNames = new Set(existingStudents.map((student) => student.name.toLowerCase()));
     if (existingNames.has(normalizedName.toLowerCase())) {
       return Response.json({ error: "A student with that name already exists." }, { status: 409 });
     }
 
-    const { data: allUsers, error: listError } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (listError) {
-      return Response.json({ error: listError.message }, { status: 500 });
-    }
-    const emailTaken = allUsers.users.some(
+    const emailTaken = allUsers.some(
       (candidate) => normalizeEmail(candidate.email ?? "") === normalizedEmail,
     );
     if (emailTaken) {
@@ -170,12 +187,10 @@ export async function DELETE(request: Request) {
 
     const targetEmail = normalizeEmail(body.email);
     const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    const target = data.users.find((candidate) => normalizeEmail(candidate.email ?? "") === targetEmail);
+    const allUsers = await listAllUsers();
+    const target = allUsers.find(
+      (candidate) => normalizeEmail(candidate.email ?? "") === targetEmail,
+    );
     if (!target) {
       return Response.json({ error: "Student not found." }, { status: 404 });
     }

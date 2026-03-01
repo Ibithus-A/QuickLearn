@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { PASSWORD_POLICY_HINT, validatePassword } from "@/lib/security/password";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -18,12 +19,13 @@ export default function ResetPasswordPage() {
     setInfo("");
 
     const trimmed = password.trim();
-    if (trimmed.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
     if (trimmed !== confirmPassword.trim()) {
       setError("Passwords do not match.");
+      return;
+    }
+    const passwordErrors = validatePassword(trimmed);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors[0]);
       return;
     }
 
@@ -52,6 +54,7 @@ export default function ResetPasswordPage() {
         <p className="mt-1 text-sm text-zinc-600">
           Enter your new password for QuickLearn.
         </p>
+        <p className="mt-1 text-xs text-zinc-500">{PASSWORD_POLICY_HINT}</p>
 
         <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
           <div>
