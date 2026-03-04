@@ -6,6 +6,9 @@ export default function ResetPasswordPage() {
       title="Reset Password"
       description="Enter your new password for Excelora."
       successMessage="Password updated. Redirecting to sign in..."
+      redirectPath="/"
+      clearExistingSessionFirst
+      signOutAfterSuccess
     />
   );
 }

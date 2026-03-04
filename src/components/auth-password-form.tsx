@@ -14,6 +14,7 @@ type AuthPasswordFormProps = {
   redirectPath?: string;
   expectedRole?: UserRole;
   clearExistingSessionFirst?: boolean;
+  signOutAfterSuccess?: boolean;
 };
 
 export function AuthPasswordForm({
@@ -23,6 +24,7 @@ export function AuthPasswordForm({
   redirectPath = "/",
   expectedRole,
   clearExistingSessionFirst = false,
+  signOutAfterSuccess = false,
 }: AuthPasswordFormProps) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -182,6 +184,10 @@ export function AuthPasswordForm({
     if (updateError) {
       setError(updateError.message);
       return;
+    }
+
+    if (signOutAfterSuccess) {
+      await supabase.auth.signOut({ scope: "local" });
     }
 
     setInfo(successMessage);

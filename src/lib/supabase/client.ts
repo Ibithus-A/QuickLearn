@@ -8,6 +8,11 @@ export function createClient() {
   if (browserClient) return browserClient;
 
   const { url, key } = getSupabaseEnv();
-  browserClient = createBrowserClient(url, key);
+  browserClient = createBrowserClient(url, key, {
+    auth: {
+      // Session-scoped auth: users must sign in again after closing the tab/window.
+      storage: window.sessionStorage,
+    },
+  });
   return browserClient;
 }

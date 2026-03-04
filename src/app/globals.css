@@ -98,6 +98,13 @@ textarea {
     color 110ms ease;
 }
 
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

@@ -1,7 +1,19 @@
 "use client";
 
 import { THEME_STORAGE_KEY } from "@/lib/constants/storage";
-import { useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+function withoutThemeTransitions(run: () => void) {
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
+  run();
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      root.classList.remove("theme-switching");
+    });
+  });
+}
 
 export function useTheme() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -36,5 +48,15 @@ export function useTheme() {
     }
   }, [isDarkMode]);
 
-  return { isDarkMode, setIsDarkMode };
+  const setThemeMode = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
+    setIsDarkMode((previous) => {
+      const next = typeof value === "function" ? value(previous) : value;
+      if (next === previous) return previous;
+
+      withoutThemeTransitions(() => {});
+      return next;
+    });
+  }, []);
+
+  return { isDarkMode, setIsDarkMode: setThemeMode };
 }
