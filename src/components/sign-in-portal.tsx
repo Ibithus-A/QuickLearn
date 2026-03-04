@@ -101,7 +101,7 @@ export function SignInPortal({
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:text-zinc-900"
                 aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                 title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               >

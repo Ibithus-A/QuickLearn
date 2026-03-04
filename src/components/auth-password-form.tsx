@@ -49,18 +49,16 @@ export function AuthPasswordForm({
         const code = url.searchParams.get("code");
         const tokenHash = url.searchParams.get("token_hash");
         const searchType = url.searchParams.get("type");
+        const errorDescription = url.searchParams.get("error_description");
 
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            if (!cancelled) {
-              setError("This setup link is invalid or expired. Request a new email.");
-            }
-            return;
+        if (errorDescription) {
+          if (!cancelled) {
+            setError(decodeURIComponent(errorDescription));
           }
-          url.searchParams.delete("code");
-          window.history.replaceState({}, "", url.toString());
-        } else if (
+          return;
+        }
+
+        if (
           tokenHash &&
           (searchType === "invite" || searchType === "recovery")
         ) {
@@ -76,6 +74,16 @@ export function AuthPasswordForm({
           }
           url.searchParams.delete("token_hash");
           url.searchParams.delete("type");
+          window.history.replaceState({}, "", url.toString());
+        } else if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            if (!cancelled) {
+              setError("This setup link is invalid or expired. Request a new email.");
+            }
+            return;
+          }
+          url.searchParams.delete("code");
           window.history.replaceState({}, "", url.toString());
         } else {
           const hash = window.location.hash.startsWith("#")
