@@ -142,7 +142,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition hover:text-zinc-900"
+                className="theme-toggle-button inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition"
                 aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                 title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
               >
