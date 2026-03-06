@@ -256,14 +256,56 @@ function stripDuplicatedSeedPageTitle(state: FlowState): FlowState {
   return { ...state, nodes };
 }
 
+const DEFAULT_PAGE_CONTENT = "Use this space for notes and examples.";
+const CHAPTER_ONE_SECTION_TITLES = new Set([
+  "1.1 argument and proof",
+  "1.2 index laws",
+  "1.3 surds",
+]);
+const INJECTED_SECTION_NOTE_PREFIXES = [
+  "## 1.1 Argument and proof",
+  "## 1.2 Index laws",
+  "## 1.3 Surds",
+];
+
+function normalizeTitle(title: string): string {
+  return title.trim().toLowerCase();
+}
+
+function stripInjectedSectionNotes(state: FlowState): FlowState {
+  const nodes = Object.fromEntries(
+    Object.entries(state.nodes).map(([id, node]) => {
+      if (node.kind !== "page") return [id, node];
+      if (!CHAPTER_ONE_SECTION_TITLES.has(normalizeTitle(node.title))) return [id, node];
+
+      const isInjected = INJECTED_SECTION_NOTE_PREFIXES.some((prefix) =>
+        node.content.trimStart().startsWith(prefix),
+      );
+      if (!isInjected) return [id, node];
+
+      return [
+        id,
+        {
+          ...node,
+          content: DEFAULT_PAGE_CONTENT,
+        },
+      ];
+    }),
+  );
+
+  return { ...state, nodes };
+}
+
 function normalizeFlowState(state: FlowState): FlowState {
   const repairedState = repairNodeReferences(state);
 
   return insertALevelMathsTree(
-    stripDuplicatedSeedPageTitle(
-      removeDeprecatedALevelMaths({
-        ...repairedState,
-      }),
+    stripInjectedSectionNotes(
+      stripDuplicatedSeedPageTitle(
+        removeDeprecatedALevelMaths({
+          ...repairedState,
+        }),
+      ),
     ),
   );
 }
