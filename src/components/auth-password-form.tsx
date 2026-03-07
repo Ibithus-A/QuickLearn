@@ -50,42 +50,44 @@ export function AuthPasswordForm({
         const tokenHash = url.searchParams.get("token_hash");
         const searchType = url.searchParams.get("type");
         const errorDescription = url.searchParams.get("error_description");
+        const isPasswordFlowType = searchType === "invite" || searchType === "recovery";
 
         if (errorDescription) {
           if (!cancelled) {
-            setError(decodeURIComponent(errorDescription));
+            try {
+              setError(decodeURIComponent(errorDescription));
+            } catch {
+              setError(errorDescription);
+            }
           }
           return;
         }
 
-        if (
-          tokenHash &&
-          (searchType === "invite" || searchType === "recovery")
-        ) {
+        let sessionEstablished = false;
+
+        if (tokenHash && isPasswordFlowType) {
           const { error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: searchType,
           });
-          if (verifyError) {
-            if (!cancelled) {
-              setError("This setup link is invalid or expired. Request a new email.");
-            }
-            return;
+          sessionEstablished = !verifyError;
+          if (sessionEstablished) {
+            url.searchParams.delete("token_hash");
+            url.searchParams.delete("type");
+            window.history.replaceState({}, "", url.toString());
           }
-          url.searchParams.delete("token_hash");
-          url.searchParams.delete("type");
-          window.history.replaceState({}, "", url.toString());
-        } else if (code) {
+        }
+
+        if (!sessionEstablished && code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            if (!cancelled) {
-              setError("This setup link is invalid or expired. Request a new email.");
-            }
-            return;
+          sessionEstablished = !exchangeError;
+          if (sessionEstablished) {
+            url.searchParams.delete("code");
+            window.history.replaceState({}, "", url.toString());
           }
-          url.searchParams.delete("code");
-          window.history.replaceState({}, "", url.toString());
-        } else {
+        }
+
+        if (!sessionEstablished) {
           const hash = window.location.hash.startsWith("#")
             ? window.location.hash.slice(1)
             : window.location.hash;
@@ -102,13 +104,10 @@ export function AuthPasswordForm({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            if (setSessionError) {
-              if (!cancelled) {
-                setError("This setup link is invalid or expired. Request a new email.");
-              }
-              return;
+            sessionEstablished = !setSessionError;
+            if (sessionEstablished) {
+              window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
             }
-            window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
           }
         }
 
