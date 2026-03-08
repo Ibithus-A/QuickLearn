@@ -3,6 +3,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export async function updateSession(request: NextRequest) {
+  const nextUrl = request.nextUrl;
+  const hasAuthCallbackParams =
+    nextUrl.searchParams.has("code") ||
+    nextUrl.searchParams.has("token_hash") ||
+    nextUrl.searchParams.has("type") ||
+    nextUrl.hash.includes("access_token") ||
+    nextUrl.hash.includes("refresh_token");
+
+  // Do not touch one-time auth callback URLs here.
+  // Let the client-side password pages consume these tokens directly.
+  if (hasAuthCallbackParams) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
   const { url, key } = getSupabaseEnv();
 
