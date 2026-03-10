@@ -1,6 +1,6 @@
 "use client";
 
-import { FlowLogoIcon, MoonIcon, SunIcon } from "@/components/icons";
+import { FlowLogoIcon } from "@/components/icons";
 import { CHAPTER_ONE_TITLE } from "@/lib/access";
 import type { UserAccessProfile, UserPlan, UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
@@ -12,8 +12,6 @@ type DashboardHomeProps = {
   name: string;
   role: UserRole;
   onOpenWorkspace: () => void;
-  isDarkMode?: boolean;
-  onToggleDarkMode?: () => void;
   onSignOut: () => void;
   onSwitchAccount: () => void;
   stats: StudentDailyStats;
@@ -36,8 +34,6 @@ export function DashboardHome({
   name,
   role,
   onOpenWorkspace,
-  isDarkMode = false,
-  onToggleDarkMode,
   onSignOut,
   onSwitchAccount,
   stats,
@@ -57,6 +53,7 @@ export function DashboardHome({
 }: DashboardHomeProps) {
   const [activeTab, setActiveTab] = useState<MetricTab>("reviewed");
   const [studentSearch, setStudentSearch] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const activeMetric = useMemo(
     () =>
@@ -78,11 +75,9 @@ export function DashboardHome({
     const query = studentSearch.trim().toLowerCase();
     if (!query) return students;
 
-    return students.filter((student) =>
-      `${student.name} ${student.email}`.toLowerCase().includes(query),
-    );
+    return students.filter((student) => student.name.toLowerCase().includes(query));
   }, [studentSearch, students]);
-  const studentOptions = visibleStudents.length > 0 ? visibleStudents : students;
+  const searchValue = isSearchOpen ? studentSearch : (selectedStudent?.name ?? studentSearch);
 
   return (
     <main className="h-screen w-screen overflow-y-auto bg-[var(--surface-app)] px-3 py-4 md:px-8 md:py-7">
@@ -99,15 +94,26 @@ export function DashboardHome({
                   Welcome back
                 </h1>
                 <p className="text-sm text-zinc-600">{name}</p>
+                {role === "student" ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+                      {currentPlan} plan
+                    </span>
+                    {currentPlan === "basic" ? (
+                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-700">
+                        Chapter 1 only until your tutor upgrades access
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                        Premium chapters are tutor-managed
+                      </span>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {role === "student" ? (
-                <span className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-medium uppercase tracking-[0.08em] text-zinc-600">
-                  {currentPlan} plan
-                </span>
-              ) : null}
               <button
                 type="button"
                 onClick={onOpenWorkspace}
@@ -115,17 +121,6 @@ export function DashboardHome({
               >
                 Open Workspace
               </button>
-              {onToggleDarkMode ? (
-                <button
-                  type="button"
-                  onClick={onToggleDarkMode}
-                  className="theme-toggle-button inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition"
-                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                  title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={onSignOut}
@@ -203,31 +198,33 @@ export function DashboardHome({
 
         {role === "student" ? (
           <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-zinc-500">
-                  Your Access
+                  Access Overview
                 </h2>
-                <p className="mt-2 text-lg font-semibold text-zinc-900">
-                  {currentPlan === "basic" ? "Basic Plan" : "Premium Plan"}
-                </p>
-                <p className="mt-1 max-w-2xl text-sm text-zinc-600">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
                   {currentPlan === "basic"
-                    ? "Basic accounts can access Chapter 1 only. Additional chapters stay locked until a tutor upgrades the account to Premium."
-                    : "Your tutor controls which Premium chapters are unlocked on your account."}
+                    ? "Your account is currently on the Basic plan. Chapter 1 is available now, and all other chapters stay locked until your tutor upgrades and unlocks them."
+                    : "Your account is on the Premium plan. Your tutor decides which chapters are unlocked for you."}
                 </p>
               </div>
-              <span className="rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600">
-                Unlocked chapters: {unlockedChapterTitles.length}
-              </span>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                  Chapters Available
+                </p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+                  {unlockedChapterTitles.length}
+                </p>
+              </div>
             </div>
           </article>
         ) : null}
 
         {role === "tutor" && chapterTitles.length > 0 ? (
           <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
-            <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="text-sm font-semibold text-zinc-800">
                     Student Chapter Access
@@ -237,74 +234,96 @@ export function DashboardHome({
                   </p>
                 </div>
                 {students.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full max-w-[320px]">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                      Find A User
+                    </label>
                     <input
                       type="search"
-                      value={studentSearch}
-                      onChange={(event) => setStudentSearch(event.target.value)}
-                      placeholder="Find user"
-                      className="w-full max-w-[220px] rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                      value={searchValue}
+                      onFocus={() => setIsSearchOpen(true)}
+                      onChange={(event) => {
+                        setStudentSearch(event.target.value);
+                        setIsSearchOpen(true);
+                      }}
+                      placeholder="Start typing a name..."
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
                     />
-                    <label className="text-sm text-zinc-600">
-                      <span className="mr-2">User</span>
-                      <select
-                        value={selectedStudentId ?? studentOptions[0]?.id ?? ""}
-                        onChange={(event) => onSelectStudent?.(event.target.value)}
-                        className="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
-                      >
-                        {studentOptions.map((student) => (
-                          <option
-                            key={student.id}
-                            value={student.id}
-                          >
-                            {student.name} ({student.email})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    {isSearchOpen && studentSearch.trim() ? (
+                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+                        {visibleStudents.length > 0 ? (
+                          visibleStudents.slice(0, 6).map((student) => (
+                            <button
+                              key={student.id}
+                              type="button"
+                              onClick={() => {
+                                onSelectStudent?.(student.id);
+                                setStudentSearch(student.name);
+                                setIsSearchOpen(false);
+                              }}
+                              className="flex w-full items-center justify-between border-b border-zinc-100 px-3 py-2.5 text-left text-sm text-zinc-700 transition last:border-b-0 hover:bg-zinc-50"
+                            >
+                              <span>{student.name}</span>
+                              {student.id === selectedStudentId ? (
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                                  Selected
+                                </span>
+                              ) : null}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-3 py-2.5 text-sm text-zinc-500">No matching users found.</p>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-600">
-                  Selected: {selectedStudent?.name ?? "No student selected"}
-                </span>
-                <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-600">
-                  Email: {selectedStudent?.email ?? "n/a"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void onSetStudentPlan?.("basic");
-                  }}
-                  className={[
-                    "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
-                    selectedStudentPlan === "basic"
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100",
-                  ].join(" ")}
-                >
-                  Set Basic
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void onSetStudentPlan?.("premium");
-                  }}
-                  className={[
-                    "rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
-                    selectedStudentPlan === "premium"
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100",
-                  ].join(" ")}
-                >
-                  Set Premium
-                </button>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                    Selected Student
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-zinc-900">
+                    {selectedStudent?.name ?? "No student selected"}
+                  </p>
+                </div>
+
+                <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onSetStudentPlan?.("basic");
+                    }}
+                    className={[
+                      "rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition",
+                      selectedStudentPlan === "basic"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-800",
+                    ].join(" ")}
+                  >
+                    Basic
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onSetStudentPlan?.("premium");
+                    }}
+                    className={[
+                      "rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition",
+                      selectedStudentPlan === "premium"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-800",
+                    ].join(" ")}
+                  >
+                    Premium
+                  </button>
+                </div>
               </div>
 
               {selectedStudentPlan === "basic" ? (
-                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700">
                   Basic users are restricted to Chapter 1. Upgrade to Premium before unlocking any additional chapters.
                 </div>
               ) : null}
@@ -335,12 +354,7 @@ export function DashboardHome({
                   >
                     {isMilestone ? (
                       <div
-                        className={[
-                          "mb-2 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]",
-                          isDarkMode
-                            ? "border-zinc-800 bg-zinc-900 text-emerald-400"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-700",
-                        ].join(" ")}
+                        className="mb-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-emerald-700"
                       >
                         Current Student Chapter
                       </div>
@@ -407,9 +421,7 @@ export function DashboardHome({
                         className={[
                           "rounded-md border px-2.5 py-1 text-xs",
                           isUnlocked
-                            ? isDarkMode
-                              ? "border-zinc-800 bg-zinc-900 text-emerald-400"
-                              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : "border-zinc-200 bg-white text-zinc-600",
                           isAlwaysUnlocked || !canUseCustomUnlock
                             ? "cursor-not-allowed opacity-70"

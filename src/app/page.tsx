@@ -11,7 +11,6 @@ import { useStudents } from "@/lib/hooks/use-students";
 import { accountFromUser } from "@/lib/supabase/account";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
-import { useTheme } from "@/lib/hooks/use-theme";
 import type { AuthenticatedAccount } from "@/types/auth";
 import { useEffect, useMemo, useState } from "react";
 
@@ -41,7 +40,6 @@ export default function HomePage() {
     chapterTitles,
   } = useStudentProgress(currentUser, viewerProfile, students, updateStudentAccess);
   const { sidebarWidth, startResize, isResizing } = useSidebarResize();
-  const { isDarkMode, setIsDarkMode } = useTheme();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -138,8 +136,6 @@ export default function HomePage() {
               onClose={() => {}}
               onContinue={handleContinueFromSignIn}
               showCloseButton={false}
-              isDarkMode={isDarkMode}
-              onToggleDarkMode={() => setIsDarkMode((value) => !value)}
             />
           </div>
         ) : view === "dashboard" ? (
@@ -148,8 +144,6 @@ export default function HomePage() {
             role={effectiveCurrentUser.role}
             stats={currentStudentStats}
             onOpenWorkspace={handleOpenWorkspaceFromDashboard}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={() => setIsDarkMode((value) => !value)}
             onSignOut={handleSignOut}
             onSwitchAccount={handleSignOut}
             currentPlan={viewerProfile?.plan ?? "basic"}
@@ -190,8 +184,6 @@ export default function HomePage() {
               >
                 <Sidebar
                   onOpenDashboard={handleOpenDashboardFromSidebar}
-                  isDarkMode={isDarkMode}
-                  onToggleDarkMode={() => setIsDarkMode((value) => !value)}
                   role={effectiveCurrentUser.role}
                   unlockedChapterTitles={viewerProfile?.unlockedChapterTitles ?? [CHAPTER_ONE_TITLE]}
                 />

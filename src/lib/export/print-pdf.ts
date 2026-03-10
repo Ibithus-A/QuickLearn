@@ -9,17 +9,12 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
-type PrintNodeAsPdfOptions = {
-  isDarkMode: boolean;
-};
-
-export function printNodeAsPdf(node: FlowNode, options: PrintNodeAsPdfOptions): boolean {
+export function printNodeAsPdf(node: FlowNode): boolean {
   const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1200,height=900");
   if (!printWindow) return false;
 
   const title = escapeHtml(node.title || "Untitled");
   const content = escapeHtml(node.content || "");
-  const isDark = options.isDarkMode;
 
   printWindow.document.write(`<!doctype html>
 <html>
@@ -28,12 +23,12 @@ export function printNodeAsPdf(node: FlowNode, options: PrintNodeAsPdfOptions): 
     <title>${title}</title>
     <style>
       :root {
-        color-scheme: ${isDark ? "dark" : "light"};
-        --bg: ${isDark ? "#0b1118" : "#f6f6f4"};
-        --panel: ${isDark ? "#0f1722" : "#ffffff"};
-        --line: ${isDark ? "#314154" : "#e4e4e1"};
-        --text: ${isDark ? "#e5e7eb" : "#191919"};
-        --muted: ${isDark ? "#94a3b8" : "#6b7280"};
+        color-scheme: light;
+        --bg: #f6f6f4;
+        --panel: #ffffff;
+        --line: #e4e4e1;
+        --text: #191919;
+        --muted: #6b7280;
       }
       * { box-sizing: border-box; }
       body {

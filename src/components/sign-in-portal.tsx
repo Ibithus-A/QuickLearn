@@ -1,7 +1,6 @@
 "use client";
 
 import { CloseIcon, FlowLogoIcon } from "@/components/icons";
-import { MoonIcon, SunIcon } from "@/components/icons";
 import { isValidEmail, normalizeStudentName } from "@/lib/auth";
 import { PASSWORD_POLICY_HINT, validatePassword } from "@/lib/security/password";
 import { accountFromUser } from "@/lib/supabase/account";
@@ -13,8 +12,6 @@ type SignInPortalProps = {
   onContinue: (account: AuthenticatedAccount) => void;
   onClose: () => void;
   showCloseButton?: boolean;
-  isDarkMode?: boolean;
-  onToggleDarkMode?: () => void;
 };
 
 type SignInRole = "student" | "tutor";
@@ -24,8 +21,6 @@ export function SignInPortal({
   onClose,
   onContinue,
   showCloseButton = true,
-  isDarkMode = false,
-  onToggleDarkMode,
 }: SignInPortalProps) {
   const [view, setView] = useState<AuthView>("sign-in");
   const [role, setRole] = useState<SignInRole>("student");
@@ -156,17 +151,6 @@ export function SignInPortal({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {onToggleDarkMode ? (
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className="theme-toggle-button inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition"
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-              </button>
-            ) : null}
             {showCloseButton ? (
               <button
                 type="button"

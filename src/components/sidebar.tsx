@@ -1,7 +1,7 @@
 "use client";
 
 import { canAccessNode } from "@/lib/access";
-import { FlowLogoIcon, FolderIcon, MoonIcon, PlusIcon, SunIcon } from "@/components/icons";
+import { FlowLogoIcon, FolderIcon, PlusIcon } from "@/components/icons";
 import { SidebarNode } from "@/components/sidebar-node";
 import { useFlowState } from "@/context/flowstate-context";
 import { A_LEVEL_MATHS_TITLE } from "@/lib/seed";
@@ -10,8 +10,6 @@ import { useEffect, useMemo, useState } from "react";
 
 type SidebarProps = {
   onOpenDashboard?: () => void;
-  isDarkMode?: boolean;
-  onToggleDarkMode?: () => void;
   role?: "tutor" | "student";
   unlockedChapterTitles?: string[];
 };
@@ -32,8 +30,6 @@ function collectSubtreeIds(
 
 export function Sidebar({
   onOpenDashboard,
-  isDarkMode = false,
-  onToggleDarkMode,
   role = "tutor",
   unlockedChapterTitles = [],
 }: SidebarProps) {
@@ -156,17 +152,6 @@ export function Sidebar({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {onToggleDarkMode ? (
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className="theme-toggle-button inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700 transition"
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-              </button>
-            ) : null}
             {canManage ? (
               <>
                 <button

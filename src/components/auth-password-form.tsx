@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PASSWORD_POLICY_HINT, validatePassword } from "@/lib/security/password";
 import { getUserRole } from "@/lib/supabase/roles";
 import type { UserRole } from "@/types/auth";
+import type { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -38,19 +39,41 @@ export function AuthPasswordForm({
   useEffect(() => {
     let cancelled = false;
 
+    const resolveUserFromSession = async (): Promise<User | null> => {
+      const supabase = createClient();
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) return user;
+        await new Promise((resolve) => window.setTimeout(resolve, 150));
+      }
+
+      return null;
+    };
+
     const initializeSession = async () => {
       const supabase = createClient();
       try {
-        if (clearExistingSessionFirst) {
-          await supabase.auth.signOut({ scope: "local" });
-        }
-
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
         const tokenHash = url.searchParams.get("token_hash");
         const searchType = url.searchParams.get("type");
         const errorDescription = url.searchParams.get("error_description");
+        const errorCode = url.searchParams.get("error_code");
         const isPasswordFlowType = searchType === "invite" || searchType === "recovery";
+        const hasAuthPayload =
+          Boolean(tokenHash) ||
+          Boolean(code) ||
+          Boolean(url.searchParams.get("access_token")) ||
+          Boolean(url.searchParams.get("refresh_token")) ||
+          Boolean(window.location.hash);
+
+        if (clearExistingSessionFirst && hasAuthPayload) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
 
         if (errorDescription) {
           if (!cancelled) {
@@ -63,60 +86,85 @@ export function AuthPasswordForm({
           return;
         }
 
-        let sessionEstablished = false;
+        if (errorCode === "otp_expired") {
+          if (!cancelled) {
+            setError("This link has expired. Request a new password email.");
+          }
+          return;
+        }
+
+        let sessionUser: User | null = null;
 
         if (tokenHash && isPasswordFlowType) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: searchType,
           });
-          sessionEstablished = !verifyError;
-          if (sessionEstablished) {
+          if (verifyError) {
+            if (!cancelled) {
+              setError(verifyError.message);
+            }
+            return;
+          }
+          sessionUser = data.user ?? data.session?.user ?? null;
+          if (sessionUser) {
             url.searchParams.delete("token_hash");
             url.searchParams.delete("type");
             window.history.replaceState({}, "", url.toString());
           }
         }
 
-        if (!sessionEstablished && code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          sessionEstablished = !exchangeError;
-          if (sessionEstablished) {
+        if (!sessionUser && code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            if (!cancelled) {
+              setError(exchangeError.message);
+            }
+            return;
+          }
+          sessionUser = data.user ?? data.session?.user ?? null;
+          if (sessionUser) {
             url.searchParams.delete("code");
             window.history.replaceState({}, "", url.toString());
           }
         }
 
-        if (!sessionEstablished) {
+        if (!sessionUser) {
+          const searchAccessToken = url.searchParams.get("access_token");
+          const searchRefreshToken = url.searchParams.get("refresh_token");
+          const searchFlowType = url.searchParams.get("type");
           const hash = window.location.hash.startsWith("#")
             ? window.location.hash.slice(1)
             : window.location.hash;
           const hashParams = new URLSearchParams(hash);
-          const accessToken = hashParams.get("access_token");
-          const refreshToken = hashParams.get("refresh_token");
-          const flowType = hashParams.get("type");
+          const accessToken = searchAccessToken ?? hashParams.get("access_token");
+          const refreshToken = searchRefreshToken ?? hashParams.get("refresh_token");
+          const flowType = searchFlowType ?? hashParams.get("type");
           if (
             accessToken &&
             refreshToken &&
             (flowType === "invite" || flowType === "recovery")
           ) {
-            const { error: setSessionError } = await supabase.auth.setSession({
+            const { data, error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            sessionEstablished = !setSessionError;
-            if (sessionEstablished) {
+            if (setSessionError) {
+              if (!cancelled) {
+                setError(setSessionError.message);
+              }
+              return;
+            }
+            sessionUser = data.user ?? data.session?.user ?? null;
+            if (sessionUser) {
               window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
             }
           }
         }
 
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        const user = sessionUser ?? await resolveUserFromSession();
 
-        if (userError || !user) {
+        if (!user) {
           if (!cancelled) {
             setError("This setup link is invalid or expired. Request a new email.");
           }
