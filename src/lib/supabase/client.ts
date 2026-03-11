@@ -10,8 +10,6 @@ export function createClient() {
   const { url, key } = getSupabaseEnv();
   browserClient = createBrowserClient(url, key, {
     auth: {
-      // Email confirmation and recovery links may open in a different tab or browser context.
-      flowType: "implicit",
       storage: window.localStorage,
     },
   });

@@ -6,7 +6,7 @@ import { PASSWORD_POLICY_HINT, validatePassword } from "@/lib/security/password"
 import { accountFromUser } from "@/lib/supabase/account";
 import { createClient } from "@/lib/supabase/client";
 import type { AuthenticatedAccount } from "@/types/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type SignInPortalProps = {
   onContinue: (account: AuthenticatedAccount) => void;
@@ -14,8 +14,15 @@ type SignInPortalProps = {
   showCloseButton?: boolean;
 };
 
-type SignInRole = "student" | "tutor";
 type AuthView = "sign-in" | "sign-up" | "forgot-password";
+
+function getInitialInfoMessage() {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  return url.searchParams.get("confirmed") === "1"
+    ? "Email confirmed. Sign in with your email and password."
+    : "";
+}
 
 export function SignInPortal({
   onClose,
@@ -23,14 +30,21 @@ export function SignInPortal({
   showCloseButton = true,
 }: SignInPortalProps) {
   const [view, setView] = useState<AuthView>("sign-in");
-  const [role, setRole] = useState<SignInRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
+  const [info, setInfo] = useState(getInitialInfoMessage);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("confirmed") === "1") {
+      url.searchParams.delete("confirmed");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const buildAuthCallbackUrl = (nextPath: string) => {
     const url = new URL("/auth/callback", window.location.origin);
@@ -38,11 +52,20 @@ export function SignInPortal({
     return url.toString();
   };
 
+  const resetFeedback = () => {
+    setError("");
+    setInfo("");
+  };
+
+  const switchView = (nextView: AuthView) => {
+    setView(nextView);
+    resetFeedback();
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const supabase = createClient();
-    setError("");
-    setInfo("");
+    resetFeedback();
     setIsSubmitting(true);
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -53,9 +76,8 @@ export function SignInPortal({
     }
 
     if (view === "forgot-password") {
-      const redirectTo = buildAuthCallbackUrl("/reset-password?flow=recovery");
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo,
+        redirectTo: buildAuthCallbackUrl("/reset-password"),
       });
       setIsSubmitting(false);
 
@@ -70,6 +92,7 @@ export function SignInPortal({
 
     if (view === "sign-up") {
       const normalizedName = normalizeStudentName(fullName) || "Student";
+
       if (password !== confirmPassword) {
         setIsSubmitting(false);
         setError("Passwords do not match.");
@@ -90,9 +113,10 @@ export function SignInPortal({
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: buildAuthCallbackUrl("/"),
+          emailRedirectTo: buildAuthCallbackUrl("/?confirmed=1"),
           data: {
             full_name: normalizedName,
+            role: "student",
           },
         },
       });
@@ -109,7 +133,7 @@ export function SignInPortal({
         return;
       }
 
-      setInfo("Account created. Check your email to confirm your sign-up before signing in.");
+      setInfo("Account created. Check your email to confirm your account, then sign in.");
       setView("sign-in");
       setPassword("");
       setConfirmPassword("");
@@ -133,14 +157,7 @@ export function SignInPortal({
       return;
     }
 
-    const account = accountFromUser(data.user);
-    if (account.role !== role) {
-      setError(`This account is not a ${role}. Choose the correct sign-in option.`);
-      await supabase.auth.signOut();
-      return;
-    }
-
-    onContinue(account);
+    onContinue(accountFromUser(data.user));
   };
 
   return (
@@ -153,7 +170,9 @@ export function SignInPortal({
             </div>
             <div>
               <p className="text-lg font-semibold text-zinc-900">Excelora Portal</p>
-              <p className="text-xs text-zinc-500">Email and password access</p>
+              <p className="text-xs text-zinc-500">
+                Create your account, sign in, or reset your password
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -170,18 +189,11 @@ export function SignInPortal({
           </div>
         </div>
 
-        <form
-          className="space-y-3"
-          onSubmit={handleSubmit}
-        >
+        <form className="space-y-3" onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
             <button
               type="button"
-              onClick={() => {
-                setView("sign-in");
-                setError("");
-                setInfo("");
-              }}
+              onClick={() => switchView("sign-in")}
               className={[
                 "rounded-md px-3 py-2 text-sm transition",
                 view === "sign-in"
@@ -193,12 +205,7 @@ export function SignInPortal({
             </button>
             <button
               type="button"
-              onClick={() => {
-                setView("sign-up");
-                setRole("student");
-                setError("");
-                setInfo("");
-              }}
+              onClick={() => switchView("sign-up")}
               className={[
                 "rounded-md px-3 py-2 text-sm transition",
                 view === "sign-up"
@@ -210,43 +217,6 @@ export function SignInPortal({
             </button>
           </div>
 
-          {view === "sign-in" ? (
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setRole("student");
-                  setError("");
-                  setInfo("");
-                }}
-                className={[
-                  "rounded-md px-3 py-2 text-sm transition",
-                  role === "student"
-                    ? "bg-white font-medium text-zinc-900 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-700",
-                ].join(" ")}
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRole("tutor");
-                  setError("");
-                  setInfo("");
-                }}
-                className={[
-                  "rounded-md px-3 py-2 text-sm transition",
-                  role === "tutor"
-                    ? "bg-white font-medium text-zinc-900 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-700",
-                ].join(" ")}
-              >
-                Tutor
-              </button>
-            </div>
-          ) : null}
-
           {view === "sign-up" ? (
             <div>
               <label className="mb-1 block text-xs font-medium text-zinc-600">
@@ -257,8 +227,7 @@ export function SignInPortal({
                 value={fullName}
                 onChange={(event) => {
                   setFullName(event.target.value);
-                  setError("");
-                  setInfo("");
+                  resetFeedback();
                 }}
                 placeholder="Alex"
                 className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
@@ -269,16 +238,13 @@ export function SignInPortal({
           ) : null}
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-600">
-              Email
-            </label>
+            <label className="mb-1 block text-xs font-medium text-zinc-600">Email</label>
             <input
               type="email"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setError("");
-                setInfo("");
+                resetFeedback();
               }}
               placeholder="you@example.com"
               className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
@@ -287,12 +253,10 @@ export function SignInPortal({
             />
             <p className="mt-1 text-xs text-zinc-500">
               {view === "forgot-password"
-                ? "Enter your account email to receive reset instructions."
+                ? "We will send a secure password reset link to this address."
                 : view === "sign-up"
-                ? "New accounts are created on the Basic plan with Chapter 1 only."
-                : role === "tutor"
-                ? "Use your tutor account email."
-                : "Use your student account email and password."}
+                  ? "You will need to confirm your email before signing in."
+                  : "Use the email address on your Excelora account."}
             </p>
           </div>
 
@@ -306,8 +270,7 @@ export function SignInPortal({
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
-                  setError("");
-                  setInfo("");
+                  resetFeedback();
                 }}
                 placeholder="••••••••"
                 className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
@@ -327,8 +290,7 @@ export function SignInPortal({
                 value={confirmPassword}
                 onChange={(event) => {
                   setConfirmPassword(event.target.value);
-                  setError("");
-                  setInfo("");
+                  resetFeedback();
                 }}
                 placeholder="••••••••"
                 className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400"
@@ -354,11 +316,7 @@ export function SignInPortal({
             {view === "sign-in" ? (
               <button
                 type="button"
-                onClick={() => {
-                  setView("forgot-password");
-                  setError("");
-                  setInfo("");
-                }}
+                onClick={() => switchView("forgot-password")}
                 className="text-xs text-zinc-600 underline-offset-2 hover:underline"
               >
                 Forgot password?
@@ -366,11 +324,7 @@ export function SignInPortal({
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setView("sign-in");
-                  setError("");
-                  setInfo("");
-                }}
+                onClick={() => switchView("sign-in")}
                 className="text-xs text-zinc-600 underline-offset-2 hover:underline"
               >
                 Back to sign in
@@ -389,7 +343,7 @@ export function SignInPortal({
                 ? "Send Reset Email"
                 : view === "sign-up"
                   ? "Create Account"
-                : "Continue to Workspace"}
+                  : "Sign In"}
           </button>
         </form>
       </div>

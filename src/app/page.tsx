@@ -42,38 +42,6 @@ export default function HomePage() {
   const { sidebarWidth, startResize, isResizing } = useSidebarResize();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.pathname !== "/") return;
-
-    const url = new URL(window.location.href);
-    const hash = window.location.hash.startsWith("#")
-      ? window.location.hash.slice(1)
-      : window.location.hash;
-    const hashParams = new URLSearchParams(hash);
-
-    const searchType = url.searchParams.get("type");
-    const hashType = hashParams.get("type");
-    const flowType = url.searchParams.get("flow");
-    const tokenHash = url.searchParams.get("token_hash");
-
-    const hasAuthCode = url.searchParams.has("code");
-    const hasTokenSession =
-      hashParams.has("access_token") && hashParams.has("refresh_token");
-    const hasAuthPayload = hasAuthCode || hasTokenSession || Boolean(tokenHash);
-
-    const isRecoveryFlow =
-      flowType === "recovery" || searchType === "recovery" || hashType === "recovery";
-    const isInviteFlow =
-      flowType === "invite" || searchType === "invite" || hashType === "invite";
-
-    if (!hasAuthPayload && !isInviteFlow && !isRecoveryFlow) return;
-
-    const targetPath = isRecoveryFlow ? "/reset-password" : "/set-password";
-    const destination = `${targetPath}${window.location.search}${window.location.hash}`;
-    window.location.replace(destination);
-  }, []);
-
-  useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
 

@@ -4,10 +4,9 @@ export default function ResetPasswordPage() {
   return (
     <AuthPasswordForm
       title="Reset Password"
-      description="Enter your new password for Excelora."
+      description="Choose a new password for your Excelora account."
       successMessage="Password updated. Redirecting to sign in..."
       redirectPath="/"
-      clearExistingSessionFirst
       signOutAfterSuccess
     />
   );
