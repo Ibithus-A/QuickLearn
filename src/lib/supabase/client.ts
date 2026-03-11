@@ -8,10 +8,6 @@ export function createClient() {
   if (browserClient) return browserClient;
 
   const { url, key } = getSupabaseEnv();
-  browserClient = createBrowserClient(url, key, {
-    auth: {
-      storage: window.localStorage,
-    },
-  });
+  browserClient = createBrowserClient(url, key);
   return browserClient;
 }

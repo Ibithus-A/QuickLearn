@@ -16,12 +16,30 @@ type SignInPortalProps = {
 
 type AuthView = "sign-in" | "sign-up" | "forgot-password";
 
-function getInitialInfoMessage() {
-  if (typeof window === "undefined") return "";
+function getInitialPortalState() {
+  if (typeof window === "undefined") {
+    return {
+      view: "sign-in" as AuthView,
+      info: "",
+    };
+  }
   const url = new URL(window.location.href);
-  return url.searchParams.get("confirmed") === "1"
-    ? "Email confirmed. Sign in with your email and password."
-    : "";
+  if (url.searchParams.get("confirmed") === "1") {
+    return {
+      view: "sign-in" as AuthView,
+      info: "Email confirmed. Sign in with your email and password.",
+    };
+  }
+  if (url.searchParams.get("reset") === "expired") {
+    return {
+      view: "forgot-password" as AuthView,
+      info: "That reset link has expired. Enter your email and we will send a new one.",
+    };
+  }
+  return {
+    view: "sign-in" as AuthView,
+    info: "",
+  };
 }
 
 export function SignInPortal({
@@ -29,21 +47,24 @@ export function SignInPortal({
   onContinue,
   showCloseButton = true,
 }: SignInPortalProps) {
-  const [view, setView] = useState<AuthView>("sign-in");
+  const [view, setView] = useState<AuthView>(() => getInitialPortalState().view);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [info, setInfo] = useState(getInitialInfoMessage);
+  const [info, setInfo] = useState(() => getInitialPortalState().info);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("confirmed") === "1") {
       url.searchParams.delete("confirmed");
-      window.history.replaceState({}, "", url.toString());
     }
+    if (url.searchParams.get("reset") === "expired") {
+      url.searchParams.delete("reset");
+    }
+    window.history.replaceState({}, "", url.toString());
   }, []);
 
   const buildAuthCallbackUrl = (nextPath: string) => {
