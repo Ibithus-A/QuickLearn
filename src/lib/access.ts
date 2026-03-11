@@ -6,6 +6,10 @@ import type { UserAccessProfile, UserPlan } from "@/types/auth";
 export const CHAPTER_TITLES = A_LEVEL_MATHS_CHAPTER_TITLES;
 export const CHAPTER_ONE_TITLE = "Chapter 1: Algebra 1";
 
+function normalizeTitle(title: string) {
+  return title.trim().toLowerCase();
+}
+
 export function normalizeUserPlan(value: unknown): UserPlan | null {
   if (value === "basic" || value === "premium") return value;
   return null;
@@ -18,13 +22,16 @@ export function sanitizeUnlockedChapterTitles(
   if (plan === "basic") return [CHAPTER_ONE_TITLE];
   if (!Array.isArray(unlockedChapterTitles)) return [CHAPTER_ONE_TITLE];
 
-  const allowed = new Set(CHAPTER_TITLES);
+  const canonicalTitles = new Map(
+    CHAPTER_TITLES.map((title) => [normalizeTitle(title), title]),
+  );
   const unique = new Set<string>([CHAPTER_ONE_TITLE]);
 
   for (const title of unlockedChapterTitles) {
     if (typeof title !== "string") continue;
-    if (!allowed.has(title)) continue;
-    unique.add(title);
+    const canonicalTitle = canonicalTitles.get(normalizeTitle(title));
+    if (!canonicalTitle) continue;
+    unique.add(canonicalTitle);
   }
 
   return CHAPTER_TITLES.filter((title) => unique.has(title));
@@ -35,11 +42,14 @@ export function hasChapterAccess(
   chapterTitle: string | null | undefined,
 ): boolean {
   if (!chapterTitle) return true;
-  return unlockedChapterTitles.includes(chapterTitle);
+  const unlocked = new Set(unlockedChapterTitles.map(normalizeTitle));
+  return unlocked.has(normalizeTitle(chapterTitle));
 }
 
 export function buildUnlocksUpToChapter(chapterTitle: string): string[] {
-  const chapterIndex = CHAPTER_TITLES.indexOf(chapterTitle);
+  const chapterIndex = CHAPTER_TITLES.findIndex(
+    (title) => normalizeTitle(title) === normalizeTitle(chapterTitle),
+  );
   const maxIndex = chapterIndex >= 0 ? chapterIndex : 0;
   return CHAPTER_TITLES.slice(0, maxIndex + 1);
 }
@@ -48,13 +58,19 @@ export function togglePremiumChapterAccess(
   currentUnlocks: string[],
   chapterTitle: string,
 ): string[] {
-  if (chapterTitle === CHAPTER_ONE_TITLE) return sanitizeUnlockedChapterTitles(currentUnlocks, "premium");
+  const canonicalTitle =
+    CHAPTER_TITLES.find((title) => normalizeTitle(title) === normalizeTitle(chapterTitle)) ??
+    chapterTitle;
+
+  if (normalizeTitle(canonicalTitle) === normalizeTitle(CHAPTER_ONE_TITLE)) {
+    return sanitizeUnlockedChapterTitles(currentUnlocks, "premium");
+  }
 
   const next = new Set(currentUnlocks);
-  if (next.has(chapterTitle)) {
-    next.delete(chapterTitle);
+  if (next.has(canonicalTitle)) {
+    next.delete(canonicalTitle);
   } else {
-    next.add(chapterTitle);
+    next.add(canonicalTitle);
   }
   next.add(CHAPTER_ONE_TITLE);
 
@@ -62,8 +78,10 @@ export function togglePremiumChapterAccess(
 }
 
 export function getHighestUnlockedChapter(unlockedChapterTitles: string[]): string {
-  const unlocked = new Set(unlockedChapterTitles);
-  const highest = [...CHAPTER_TITLES].reverse().find((title) => unlocked.has(title));
+  const unlocked = new Set(unlockedChapterTitles.map(normalizeTitle));
+  const highest = [...CHAPTER_TITLES]
+    .reverse()
+    .find((title) => unlocked.has(normalizeTitle(title)));
   return highest ?? CHAPTER_ONE_TITLE;
 }
 
@@ -90,10 +108,6 @@ export function buildStudentStats(
   return { reviewedToday, dueToday, habitSeries };
 }
 
-function normalizeTitle(title: string) {
-  return title.trim().toLowerCase();
-}
-
 function getMathRootId(state: FlowState): string | null {
   return (
     state.rootIds.find((id) => {
@@ -109,7 +123,10 @@ export function getChapterTitleForNode(state: FlowState, nodeId: string): string
 
   let cursor = state.nodes[nodeId];
   while (cursor) {
-    if (cursor.parentId === mathRootId && CHAPTER_TITLES.includes(cursor.title)) {
+    if (
+      cursor.parentId === mathRootId &&
+      CHAPTER_TITLES.some((title) => normalizeTitle(title) === normalizeTitle(cursor.title))
+    ) {
       return cursor.title;
     }
 

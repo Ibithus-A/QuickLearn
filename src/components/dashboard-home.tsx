@@ -99,15 +99,6 @@ export function DashboardHome({
                     <span className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
                       {currentPlan} plan
                     </span>
-                    {currentPlan === "basic" ? (
-                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-700">
-                        Chapter 1 only until your tutor upgrades access
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                        Premium chapters are tutor-managed
-                      </span>
-                    )}
                   </div>
                 ) : null}
               </div>
@@ -195,31 +186,6 @@ export function DashboardHome({
             </div>
           </article>
         </div>
-
-        {role === "student" ? (
-          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-zinc-500">
-                  Access Overview
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-                  {currentPlan === "basic"
-                    ? "Your account is currently on the Basic plan. Chapter 1 is available now, and all other chapters stay locked until your tutor upgrades and unlocks them."
-                    : "Your account is on the Premium plan. Your tutor decides which chapters are unlocked for you."}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                  Chapters Available
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-                  {unlockedChapterTitles.length}
-                </p>
-              </div>
-            </div>
-          </article>
-        ) : null}
 
         {role === "tutor" && chapterTitles.length > 0 ? (
           <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">

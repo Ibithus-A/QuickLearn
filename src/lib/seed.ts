@@ -321,6 +321,45 @@ function collectSubtreeIds(nodes: Record<string, FlowNode>, id: string, ids: Set
   }
 }
 
+function attachChildren(
+  nodes: Record<string, FlowNode>,
+  parentId: string,
+  childIds: string[],
+) {
+  const parent = nodes[parentId];
+  if (!parent) return;
+
+  for (const childId of childIds) {
+    const child = nodes[childId];
+    if (!child) continue;
+    child.parentId = parentId;
+    if (!parent.childrenIds.includes(childId)) {
+      parent.childrenIds.push(childId);
+    }
+  }
+}
+
+function reparentNode(
+  nodes: Record<string, FlowNode>,
+  nodeId: string,
+  nextParentId: string,
+) {
+  const node = nodes[nodeId];
+  if (!node) return;
+
+  const previousParentId = node.parentId;
+  if (previousParentId && nodes[previousParentId]) {
+    nodes[previousParentId].childrenIds = nodes[previousParentId].childrenIds.filter(
+      (childId) => childId !== nodeId,
+    );
+  }
+
+  node.parentId = nextParentId;
+  if (!nodes[nextParentId].childrenIds.includes(nodeId)) {
+    nodes[nextParentId].childrenIds.push(nodeId);
+  }
+}
+
 function orderChildrenByTitle(
   nodes: Record<string, FlowNode>,
   childrenIds: string[],
@@ -378,12 +417,25 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
     return id;
   };
 
-  const existingCourseRootId = next.rootIds.find((rootId) => {
+  const matchingCourseRootIds = next.rootIds.filter((rootId) => {
     const title = next.nodes[rootId]?.title;
     return title ? normalizeTitle(title) === normalizeTitle(A_LEVEL_MATHS_TITLE) : false;
   });
 
-  const courseRootId = existingCourseRootId ?? createFolder(A_LEVEL_MATHS_TITLE, null);
+  const courseRootId = matchingCourseRootIds[0] ?? createFolder(A_LEVEL_MATHS_TITLE, null);
+  if (next.nodes[courseRootId].title !== A_LEVEL_MATHS_TITLE) {
+    next.nodes[courseRootId].title = A_LEVEL_MATHS_TITLE;
+  }
+  next.nodes[courseRootId].isExpanded = true;
+
+  for (const duplicateRootId of matchingCourseRootIds.slice(1)) {
+    const duplicateRoot = next.nodes[duplicateRootId];
+    if (!duplicateRoot) continue;
+    attachChildren(next.nodes, courseRootId, duplicateRoot.childrenIds);
+    next.rootIds = next.rootIds.filter((id) => id !== duplicateRootId);
+    delete next.nodes[duplicateRootId];
+  }
+
   const courseRootNode = next.nodes[courseRootId];
   if (courseRootNode) {
     const idsToRemove = new Set<string>();
@@ -410,12 +462,37 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
       toCapitalizedWords(subtopic),
     );
 
-    const existingChapterId = next.nodes[courseRootId]?.childrenIds.find((childId) => {
+    const matchingChapterIds =
+      next.nodes[courseRootId]?.childrenIds.filter((childId) => {
+        const child = next.nodes[childId];
+        return (
+          child?.kind === "folder" &&
+          normalizeTitle(child.title) === normalizeTitle(chapter.title)
+        );
+      }) ?? [];
+
+    const existingChapterId = matchingChapterIds[0] ?? next.nodes[courseRootId]?.childrenIds.find((childId) => {
       const child = next.nodes[childId];
       return child?.kind === "folder" && normalizeTitle(child.title) === normalizeTitle(chapter.title);
     });
 
     const chapterId = existingChapterId ?? createFolder(chapter.title, courseRootId);
+    if (next.nodes[chapterId].title !== chapter.title) {
+      next.nodes[chapterId].title = chapter.title;
+    }
+    if (normalizeTitle(chapter.title) === normalizeTitle("Chapter 1: Algebra 1")) {
+      next.nodes[chapterId].isExpanded = true;
+    }
+
+    for (const duplicateChapterId of matchingChapterIds.slice(1)) {
+      const duplicateChapter = next.nodes[duplicateChapterId];
+      if (!duplicateChapter) continue;
+      attachChildren(next.nodes, chapterId, duplicateChapter.childrenIds);
+      next.nodes[courseRootId].childrenIds = next.nodes[courseRootId].childrenIds.filter(
+        (childId) => childId !== duplicateChapterId,
+      );
+      delete next.nodes[duplicateChapterId];
+    }
 
     const legacyAssessmentId = next.nodes[chapterId]?.childrenIds.find((childId) => {
       const child = next.nodes[childId];
@@ -467,6 +544,22 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
         return child?.kind === "page" && normalizeTitle(child.title) === normalizeTitle(subtopic);
       });
       if (!existingSubtopicId) {
+        const matchingPageId = Object.keys(next.nodes).find((nodeId) => {
+          const node = next.nodes[nodeId];
+          return (
+            node.kind === "page" &&
+            normalizeTitle(node.title) === normalizeTitle(subtopic)
+          );
+        });
+
+        if (matchingPageId) {
+          reparentNode(next.nodes, matchingPageId, chapterId);
+          if (next.nodes[matchingPageId].title !== subtopic) {
+            next.nodes[matchingPageId].title = subtopic;
+          }
+          continue;
+        }
+
         createPage(subtopic, chapterId);
         continue;
       }

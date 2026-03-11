@@ -6,7 +6,7 @@ import { SidebarNode } from "@/components/sidebar-node";
 import { useFlowState } from "@/context/flowstate-context";
 import { A_LEVEL_MATHS_TITLE } from "@/lib/seed";
 import type { DragEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SidebarProps = {
   onOpenDashboard?: () => void;
@@ -28,18 +28,32 @@ function collectSubtreeIds(
   }
 }
 
+function normalizeTitle(title: string) {
+  return title.trim().toLowerCase();
+}
+
 export function Sidebar({
   onOpenDashboard,
   role = "tutor",
   unlockedChapterTitles = [],
 }: SidebarProps) {
-  const { state, addNode, moveNode, isHydrated, selectNode, collapseAllFolders, revealNode } =
+  const {
+    state,
+    addNode,
+    moveNode,
+    isHydrated,
+    selectNode,
+    toggleExpanded,
+    collapseAllFolders,
+    revealNode,
+  } =
     useFlowState();
   const isStudent = role === "student";
   const canManage = !isStudent;
   const [searchQuery, setSearchQuery] = useState("");
+  const lastStudentAccessKeyRef = useRef<string | null>(null);
 
-  const { visibleRootIds, visibleNodeIds, lockedNodeIds } = useMemo(() => {
+  const { visibleRootIds, visibleNodeIds } = useMemo(() => {
     if (!isStudent) {
       const allVisible = new Set<string>();
       for (const id of Object.keys(state.nodes)) {
@@ -48,33 +62,27 @@ export function Sidebar({
       return {
         visibleRootIds: state.rootIds,
         visibleNodeIds: allVisible,
-        lockedNodeIds: new Set<string>(),
       };
     }
 
     const visibleIds = new Set<string>();
-    const nextLockedNodeIds = new Set<string>();
-    const unlocked = new Set(unlockedChapterTitles.map((title) => title.toLowerCase()));
     const mathRootId = state.rootIds.find((id) => {
-      const title = state.nodes[id]?.title?.trim().toLowerCase();
-      return title === A_LEVEL_MATHS_TITLE.toLowerCase();
+      const title = state.nodes[id]?.title;
+      return title ? normalizeTitle(title) === normalizeTitle(A_LEVEL_MATHS_TITLE) : false;
     });
 
     if (!mathRootId) {
       return {
         visibleRootIds: [],
         visibleNodeIds: visibleIds,
-        lockedNodeIds: nextLockedNodeIds,
       };
     }
 
     visibleIds.add(mathRootId);
     const chapters = state.nodes[mathRootId]?.childrenIds ?? [];
     for (const chapterId of chapters) {
-      const chapterTitle = state.nodes[chapterId]?.title?.toLowerCase();
       visibleIds.add(chapterId);
-      if (!chapterTitle || !unlocked.has(chapterTitle)) {
-        nextLockedNodeIds.add(chapterId);
+      if (!canAccessNode(state, chapterId, unlockedChapterTitles)) {
         continue;
       }
       collectSubtreeIds(state.nodes, chapterId, visibleIds);
@@ -83,9 +91,8 @@ export function Sidebar({
     return {
       visibleRootIds: [mathRootId],
       visibleNodeIds: visibleIds,
-      lockedNodeIds: nextLockedNodeIds,
     };
-  }, [isStudent, state.nodes, state.rootIds, unlockedChapterTitles]);
+  }, [isStudent, state, unlockedChapterTitles]);
 
   useEffect(() => {
     if (!isStudent) return;
@@ -97,6 +104,36 @@ export function Sidebar({
       selectNode(visibleRootIds[0]);
     }
   }, [isStudent, selectNode, state.selectedId, visibleNodeIds, visibleRootIds]);
+
+  useEffect(() => {
+    if (!isStudent) return;
+
+    const accessKey = unlockedChapterTitles.join("||");
+    if (lastStudentAccessKeyRef.current === accessKey) return;
+    lastStudentAccessKeyRef.current = accessKey;
+
+    const mathRootId = visibleRootIds[0];
+    if (mathRootId && !state.nodes[mathRootId]?.isExpanded) {
+      toggleExpanded(mathRootId);
+    }
+
+    for (const nodeId of visibleNodeIds) {
+      const node = state.nodes[nodeId];
+      if (!node || node.kind !== "folder") continue;
+      if (node.parentId !== mathRootId) continue;
+      if (!canAccessNode(state, nodeId, unlockedChapterTitles)) continue;
+      if (!node.isExpanded) {
+        toggleExpanded(nodeId);
+      }
+    }
+  }, [
+    isStudent,
+    state,
+    unlockedChapterTitles,
+    toggleExpanded,
+    visibleNodeIds,
+    visibleRootIds,
+  ]);
 
   const handleRootDrop = (event: DragEvent<HTMLDivElement>) => {
     if (!canManage) return;
@@ -268,7 +305,6 @@ export function Sidebar({
               isLockedNode={(id) =>
                 isStudent &&
                 visibleNodeIds.has(id) &&
-                lockedNodeIds.has(id) &&
                 !canAccessNode(state, id, unlockedChapterTitles)
               }
             />
