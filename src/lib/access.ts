@@ -88,11 +88,19 @@ type StudentAccessShape = Pick<
   "plan" | "taggedChapterTitle" | "customUnlockedChapterTitles"
 >;
 
+export function resolveTaggedChapterTitle(
+  access: StudentAccessShape | null | undefined,
+): string | null {
+  if (!access) return CHAPTER_ONE_TITLE;
+  if (access.plan === "basic") return CHAPTER_ONE_TITLE;
+  return sanitizeTaggedChapterTitle(access.taggedChapterTitle);
+}
+
 export function resolveAccessibleChapterTitles(access: StudentAccessShape | null | undefined): string[] {
   if (!access) return [CHAPTER_ONE_TITLE];
   if (access.plan === "basic") return [CHAPTER_ONE_TITLE];
 
-  const taggedChapterTitle = sanitizeTaggedChapterTitle(access.taggedChapterTitle);
+  const taggedChapterTitle = resolveTaggedChapterTitle(access);
   const taggedUnlocks = taggedChapterTitle ? buildUnlocksUpToChapter(taggedChapterTitle) : [CHAPTER_ONE_TITLE];
   const customUnlocks = sanitizeCustomUnlockedChapterTitles(access.customUnlockedChapterTitles);
   const accessible = new Set<string>([...taggedUnlocks, ...customUnlocks, CHAPTER_ONE_TITLE]);

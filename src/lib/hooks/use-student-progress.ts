@@ -4,6 +4,7 @@ import {
   CHAPTER_TITLES,
   buildStudentStats,
   resolveAccessibleChapterTitles,
+  resolveTaggedChapterTitle,
   sanitizeTaggedChapterTitle,
   toggleCustomChapterAccess,
 } from "@/lib/access";
@@ -61,9 +62,7 @@ export function useStudentProgress(
       ? buildStudentStats(resolveAccessibleChapterTitles(viewerProfile).length, 1)
       : statsByStudent[resolvedSelectedStudentId] ?? buildStudentStats(1, 1);
 
-  const selectedStudentMilestone = selectedStudent
-    ? selectedStudent.taggedChapterTitle
-    : null;
+  const selectedStudentMilestone = resolveTaggedChapterTitle(selectedStudent);
 
   const chapterTagsByTitle = useMemo(() => {
     const tags = Object.fromEntries(
@@ -71,8 +70,9 @@ export function useStudentProgress(
     );
 
     for (const student of studentAccounts) {
-      if (!student.taggedChapterTitle) continue;
-      tags[student.taggedChapterTitle]?.push({
+      const taggedChapterTitle = resolveTaggedChapterTitle(student);
+      if (!taggedChapterTitle) continue;
+      tags[taggedChapterTitle]?.push({
         id: student.id,
         name: student.name,
         email: student.email,

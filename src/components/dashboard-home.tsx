@@ -61,8 +61,12 @@ export function DashboardHome({
     const query = studentSearch.trim().toLowerCase();
     if (!query) return students;
 
-    return students.filter((student) => student.name.toLowerCase().includes(query));
+    return students.filter((student) => {
+      const haystacks = [student.name, student.email].map((value) => value.toLowerCase());
+      return haystacks.some((value) => value.includes(query));
+    });
   }, [studentSearch, students]);
+
   const handleDeleteStudent = async () => {
     if (!selectedStudent || !onDeleteStudent || isDeletingStudent) return;
     const confirmed = window.confirm(
@@ -194,7 +198,7 @@ export function DashboardHome({
                           setStudentSearch(event.target.value);
                           setIsSearchOpen(true);
                         }}
-                        placeholder="Start typing a name..."
+                        placeholder="Search student by name or email..."
                         className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 pr-16 text-sm text-zinc-800 outline-none focus:border-zinc-400"
                       />
                       {studentSearch ? (
@@ -210,7 +214,7 @@ export function DashboardHome({
                         </button>
                       ) : null}
                     </div>
-                    {isSearchOpen && studentSearch.trim() ? (
+                    {isSearchOpen ? (
                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
                         {visibleStudents.length > 0 ? (
                           visibleStudents.slice(0, 6).map((student) => (
@@ -224,7 +228,12 @@ export function DashboardHome({
                               }}
                               className="flex w-full items-center justify-between border-b border-zinc-100 px-3 py-2.5 text-left text-sm text-zinc-700 transition last:border-b-0 hover:bg-zinc-50"
                             >
-                              <span>{student.name}</span>
+                              <span className="min-w-0">
+                                <span className="block truncate">{student.name}</span>
+                                <span className="block truncate text-xs text-zinc-500">
+                                  {student.email}
+                                </span>
+                              </span>
                               {student.id === selectedStudentId ? (
                                 <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
                                   Selected
@@ -239,6 +248,11 @@ export function DashboardHome({
                     ) : null}
                   </div>
                 ) : null}
+                {students.length > 0 ? (
+                  <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-600">
+                    {students.length} student{students.length === 1 ? "" : "s"}
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3">
@@ -249,6 +263,9 @@ export function DashboardHome({
                   <p className="mt-1 text-sm font-medium text-zinc-900">
                     {selectedStudent?.name ?? "No student selected"}
                   </p>
+                  {selectedStudent ? (
+                    <p className="mt-1 text-xs text-zinc-500">{selectedStudent.email}</p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -384,16 +401,29 @@ export function DashboardHome({
                         {chapterTags.map((taggedStudent) => {
                           const isCurrentStudent =
                             taggedStudent.id === selectedStudentId;
+                          const studentInitial = taggedStudent.name.charAt(0).toUpperCase();
                           return (
-                          <span
-                            key={`${chapterTitle}-${taggedStudent.email}`}
-                            className={[
-                              "rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium",
-                              isCurrentStudent ? "text-emerald-600" : "text-zinc-700",
-                            ].join(" ")}
-                          >
-                            {taggedStudent.name}
-                          </span>
+                            <button
+                              key={`${chapterTitle}-${taggedStudent.email}`}
+                              type="button"
+                              onClick={() => {
+                                onSelectStudent?.(taggedStudent.id);
+                                setStudentSearch(taggedStudent.name);
+                                setIsSearchOpen(false);
+                              }}
+                              className={[
+                                "inline-flex items-center gap-2 rounded-full border px-2 py-1 pr-2.5 text-[11px] font-medium transition hover:bg-zinc-100",
+                                isCurrentStudent
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-zinc-200 bg-white text-zinc-700",
+                              ].join(" ")}
+                              title={`${taggedStudent.name} (${taggedStudent.email})`}
+                            >
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-semibold text-white">
+                                {studentInitial}
+                              </span>
+                              <span>{taggedStudent.name}</span>
+                            </button>
                           );
                         })}
                       </div>
