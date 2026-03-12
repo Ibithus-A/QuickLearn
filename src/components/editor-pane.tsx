@@ -110,7 +110,6 @@ export function EditorPane({
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const { message: renameNotice, setMessage: setRenameNotice } =
     useAutoDismissMessage(2400);
-
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
   const lockInfo = selectedNode
@@ -294,119 +293,119 @@ export function EditorPane({
             </div>
           </header>
 
-        <div
-          className={[
-            "scroll-slim min-h-0 overflow-y-auto px-6 py-6 transition",
-            lockInfo.isEffectivelyLocked ? "opacity-30 blur-md" : "",
-          ].join(" ")}
-        >
-          <div className="relative mx-auto w-full max-w-3xl">
-            {slashContext && (
-              <div className="absolute left-0 top-0 z-20 w-full max-w-md rounded-xl border border-zinc-200 bg-white p-2 shadow-[0_18px_40px_rgba(9,9,11,0.16)]">
-                <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  Insert Block
-                </p>
-                <ul className="space-y-1">
-                  {slashOptions.length === 0 ? (
-                    <li className="rounded-lg px-2 py-2 text-sm text-zinc-500">
-                      No matching commands
-                    </li>
-                  ) : (
-                    slashOptions.map((option, index) => (
-                      <li key={option.id}>
-                        <button
-                          type="button"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => applySlashOption(option)}
-                          className={[
-                            "w-full rounded-lg px-2 py-2 text-left transition",
-                            index === activeCommandIndex
-                              ? "bg-zinc-100"
-                              : "hover:bg-zinc-50",
-                          ].join(" ")}
-                        >
-                          <span className="block text-sm font-medium text-zinc-800">
-                            {option.label}
-                          </span>
-                          <span className="block text-xs text-zinc-500">{option.hint}</span>
-                        </button>
+          <div
+            className={[
+              "scroll-slim min-h-0 overflow-y-auto px-6 py-6 transition",
+              lockInfo.isEffectivelyLocked ? "opacity-30 blur-md" : "",
+            ].join(" ")}
+          >
+            <div className="relative mx-auto w-full max-w-3xl">
+              {slashContext && (
+                <div className="absolute left-0 top-0 z-20 w-full max-w-md rounded-xl border border-zinc-200 bg-white p-2 shadow-[0_18px_40px_rgba(9,9,11,0.16)]">
+                  <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+                    Insert Block
+                  </p>
+                  <ul className="space-y-1">
+                    {slashOptions.length === 0 ? (
+                      <li className="rounded-lg px-2 py-2 text-sm text-zinc-500">
+                        No matching commands
                       </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            )}
+                    ) : (
+                      slashOptions.map((option, index) => (
+                        <li key={option.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => applySlashOption(option)}
+                            className={[
+                              "w-full rounded-lg px-2 py-2 text-left transition",
+                              index === activeCommandIndex
+                                ? "bg-zinc-100"
+                                : "hover:bg-zinc-50",
+                            ].join(" ")}
+                          >
+                            <span className="block text-sm font-medium text-zinc-800">
+                              {option.label}
+                            </span>
+                            <span className="block text-xs text-zinc-500">{option.hint}</span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
 
-            <textarea
-              ref={textareaRef}
-              id="note-content"
-              value={selectedNode.content}
-              onChange={(event) => {
-                if (!canEditContent) return;
-                const nextValue = event.target.value;
-                updateContent(selectedNode.id, nextValue);
+              <textarea
+                ref={textareaRef}
+                id="note-content"
+                value={selectedNode.content}
+                onChange={(event) => {
+                  if (!canEditContent) return;
+                  const nextValue = event.target.value;
+                  updateContent(selectedNode.id, nextValue);
 
-                const cursor = event.target.selectionStart ?? nextValue.length;
-                const nextSlashContext = getSlashContext(nextValue, cursor);
+                  const cursor = event.target.selectionStart ?? nextValue.length;
+                  const nextSlashContext = getSlashContext(nextValue, cursor);
 
-                if (!nextSlashContext) {
-                  closeSlashMenu();
-                  return;
+                  if (!nextSlashContext) {
+                    closeSlashMenu();
+                    return;
+                  }
+
+                  setSlashContext(nextSlashContext);
+                  setActiveCommandIndex(0);
+                }}
+                onBlur={() => {
+                  window.setTimeout(() => {
+                    closeSlashMenu();
+                  }, 120);
+                }}
+                onKeyDown={(event) => {
+                  if (!canEditContent) return;
+                  if (!slashContext) return;
+
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    closeSlashMenu();
+                    return;
+                  }
+
+                  if (slashOptions.length === 0) return;
+
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setActiveCommandIndex((index) => (index + 1) % slashOptions.length);
+                    return;
+                  }
+
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setActiveCommandIndex(
+                      (index) => (index - 1 + slashOptions.length) % slashOptions.length,
+                    );
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === "Tab") {
+                    event.preventDefault();
+                    applySlashOption(slashOptions[activeCommandIndex]);
+                  }
+                }}
+                placeholder={
+                  selectedNode.kind === "folder"
+                    ? "Write notes for this folder... Type / for commands."
+                    : "Start writing your thoughts... Type / for commands."
                 }
-
-                setSlashContext(nextSlashContext);
-                setActiveCommandIndex(0);
-              }}
-              onBlur={() => {
-                window.setTimeout(() => {
-                  closeSlashMenu();
-                }, 120);
-              }}
-              onKeyDown={(event) => {
-                if (!canEditContent) return;
-                if (!slashContext) return;
-
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  closeSlashMenu();
-                  return;
-                }
-
-                if (slashOptions.length === 0) return;
-
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  setActiveCommandIndex((index) => (index + 1) % slashOptions.length);
-                  return;
-                }
-
-                if (event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setActiveCommandIndex(
-                    (index) => (index - 1 + slashOptions.length) % slashOptions.length,
-                  );
-                  return;
-                }
-
-                if (event.key === "Enter" || event.key === "Tab") {
-                  event.preventDefault();
-                  applySlashOption(slashOptions[activeCommandIndex]);
-                }
-              }}
-              placeholder={
-                selectedNode.kind === "folder"
-                  ? "Write notes for this folder... Type / for commands."
-                  : "Start writing your thoughts... Type / for commands."
-              }
-              readOnly={!canEditContent}
-              className={[
-                "scroll-slim notion-editor min-h-[60vh] w-full resize-none bg-transparent py-1 text-[15px] leading-7 text-zinc-800 outline-none placeholder:text-zinc-400",
-                !canEditContent ? "cursor-default opacity-75" : "",
-              ].join(" ")}
-            />
+                readOnly={!canEditContent}
+                className={[
+                  "scroll-slim notion-editor min-h-[60vh] w-full resize-none bg-transparent py-1 text-[15px] leading-7 text-zinc-800 outline-none placeholder:text-zinc-400",
+                  !canEditContent ? "cursor-default opacity-75" : "",
+                ].join(" ")}
+              />
+            </div>
           </div>
         </div>
-      </div>
       </div>
 
       {lockInfo.isEffectivelyLocked && (
