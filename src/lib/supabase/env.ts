@@ -12,3 +12,18 @@ export function getSupabaseEnv() {
 
   return { url, key };
 }
+
+export function getSiteUrl() {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configuredSiteUrl) {
+    return configuredSiteUrl.replace(/\/+$/, "");
+  }
+
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  throw new Error(
+    "Missing NEXT_PUBLIC_SITE_URL. Set it to the public site origin for auth email redirects.",
+  );
+}

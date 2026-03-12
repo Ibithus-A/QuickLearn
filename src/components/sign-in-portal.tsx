@@ -5,6 +5,7 @@ import { isValidEmail, normalizeStudentName } from "@/lib/auth";
 import { PASSWORD_POLICY_HINT, validatePassword } from "@/lib/security/password";
 import { accountFromUser } from "@/lib/supabase/account";
 import { createClient } from "@/lib/supabase/client";
+import { getSiteUrl } from "@/lib/supabase/env";
 import type { AuthenticatedAccount } from "@/types/auth";
 import { useEffect, useState } from "react";
 
@@ -59,9 +60,31 @@ export function SignInPortal({
   }, []);
 
   const buildAuthCallbackUrl = (nextPath: string) => {
-    const url = new URL("/auth/callback", window.location.origin);
+    const url = new URL("/auth/callback", getSiteUrl());
     url.searchParams.set("next", nextPath);
     return url.toString();
+  };
+
+  const formatSignUpError = (message: string) => {
+    const normalized = message.trim();
+    if (!normalized) {
+      return "Unable to create your account. Please try again.";
+    }
+
+    const lower = normalized.toLowerCase();
+    if (lower.includes("redirect") || lower.includes("redirect_to")) {
+      return `${normalized} Check that ${getSiteUrl()} is listed in Supabase Auth redirect URLs.`;
+    }
+
+    if (lower.includes("email rate limit")) {
+      return "Supabase is rate-limiting confirmation emails right now. Wait a moment, then try again.";
+    }
+
+    if (lower.includes("smtp") || lower.includes("email provider")) {
+      return `${normalized} Check the Supabase Auth email provider settings.`;
+    }
+
+    return normalized;
   };
 
   const resetFeedback = () => {
@@ -121,7 +144,7 @@ export function SignInPortal({
       setIsSubmitting(false);
 
       if (signUpError) {
-        setError(signUpError.message);
+        setError(formatSignUpError(signUpError.message));
         return;
       }
 
@@ -130,7 +153,9 @@ export function SignInPortal({
         return;
       }
 
-      setInfo("Account created. Check your email to confirm your account, then sign in.");
+      setInfo(
+        `Account created. Check ${normalizedEmail} for a confirmation email. If nothing arrives, verify Supabase email settings and redirect URLs for ${getSiteUrl()}.`,
+      );
       setView("sign-in");
       setPassword("");
       setConfirmPassword("");
