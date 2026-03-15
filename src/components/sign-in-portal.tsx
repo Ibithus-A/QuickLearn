@@ -26,6 +26,12 @@ type InitialPortalState = {
   recoveryRefreshToken: string | null;
 };
 
+function isIgnorableConfirmationError(message: string): boolean {
+  return message
+    .toLowerCase()
+    .includes("code challenge does not match previously saved code verifier");
+}
+
 function getInitialPortalState(): InitialPortalState {
   if (typeof window === "undefined") {
     return {
@@ -45,6 +51,9 @@ function getInitialPortalState(): InitialPortalState {
   const recoveryAccessToken = hashParams.get("access_token");
   const recoveryRefreshToken = hashParams.get("refresh_token");
   const errorDescription = url.searchParams.get("error_description") ?? "";
+  const safeErrorDescription = isIgnorableConfirmationError(errorDescription)
+    ? ""
+    : errorDescription;
 
   if (
     recoveryType === "recovery" &&
@@ -64,7 +73,7 @@ function getInitialPortalState(): InitialPortalState {
     return {
       view: "sign-in",
       info: "Email confirmed. Sign in with your email and password.",
-      error: errorDescription,
+      error: "",
       recoveryTokenHash: null,
       recoveryAccessToken: null,
       recoveryRefreshToken: null,
@@ -74,7 +83,7 @@ function getInitialPortalState(): InitialPortalState {
   return {
     view: "sign-in",
     info: "",
-    error: errorDescription,
+    error: safeErrorDescription,
     recoveryTokenHash: null,
     recoveryAccessToken: null,
     recoveryRefreshToken: null,
@@ -311,7 +320,7 @@ export function SignInPortal({
       }
 
       setInfo(
-        `Account created. Check ${normalizedEmail} for a confirmation email. If nothing arrives, verify Supabase email settings and redirect URLs for ${getSiteUrl()}.`,
+        "Account created! Check your inbox for your confirmation email.",
       );
       setView("sign-in");
       setPassword("");
