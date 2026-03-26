@@ -57,8 +57,9 @@ export function useStudents(currentUserEmail?: string | null) {
 
       setViewerProfile(sanitizeProfile(payload.viewer));
       setStudents(sanitizeStudents(payload.students));
-    } catch {
+    } catch (error) {
       // Preserve last successful state on transient failures.
+      console.error("[useStudents] Failed to fetch students:", error);
     }
   }, []);
 

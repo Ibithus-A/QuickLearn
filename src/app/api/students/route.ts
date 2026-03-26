@@ -95,7 +95,8 @@ export async function GET() {
     const students = viewer.role === "tutor" ? await listStudentProfiles(supabase) : [];
 
     return Response.json({ viewer, students });
-  } catch {
+  } catch (error) {
+    console.error("[GET /api/students]", error);
     return jsonError("Unable to load access data.", 500);
   }
 }

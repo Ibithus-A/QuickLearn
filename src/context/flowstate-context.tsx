@@ -98,7 +98,7 @@ function isFlowStateLike(value: unknown): value is FlowState {
     typeof candidate.nodes === "object" &&
     candidate.nodes !== null &&
     Array.isArray(candidate.rootIds) &&
-    ("selectedId" in candidate || candidate.selectedId === null)
+    "selectedId" in candidate
   );
 }
 

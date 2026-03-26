@@ -46,7 +46,7 @@ export function useStudentProgress(
     currentUser?.role === "student"
       ? viewerProfile
       : selectedStudent;
-  const activeStudentUnlocks = resolveAccessibleChapterTitles(activeStudentAccess ?? null);
+  const activeStudentUnlocks = resolveAccessibleChapterTitles(activeStudentAccess);
 
   const statsByStudent = useMemo(() => {
     const entries = studentAccounts.map((student, index) => [
@@ -167,6 +167,5 @@ export function useStudentProgress(
     setPlanForSelectedStudent,
     deleteSelectedStudent,
     chapterTitles: CHAPTER_TITLES,
-    students: studentAccounts,
   };
 }

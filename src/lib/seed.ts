@@ -471,10 +471,7 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
         );
       }) ?? [];
 
-    const existingChapterId = matchingChapterIds[0] ?? next.nodes[courseRootId]?.childrenIds.find((childId) => {
-      const child = next.nodes[childId];
-      return child?.kind === "folder" && normalizeTitle(child.title) === normalizeTitle(chapter.title);
-    });
+    const existingChapterId = matchingChapterIds[0];
 
     const chapterId = existingChapterId ?? createFolder(chapter.title, courseRootId);
     if (next.nodes[chapterId].title !== chapter.title) {
