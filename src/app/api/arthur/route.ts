@@ -73,17 +73,28 @@ export async function POST(request: Request) {
       }),
     });
 
-    const payload = (await cohereResponse.json()) as {
+    const rawBody = await cohereResponse.text();
+    let payload: {
       message?: { content?: Array<{ type?: string; text?: string }> };
       error?: string | { message?: string };
-    };
+    } = {};
+    try {
+      payload = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      payload = {};
+    }
 
     if (!cohereResponse.ok) {
       const providerError =
-        typeof payload.error === "string"
-          ? payload.error
-          : payload.error?.message ?? "Cohere request failed.";
-      return NextResponse.json({ error: providerError }, { status: cohereResponse.status });
+        (typeof payload.error === "string" ? payload.error : payload.error?.message) ??
+        (payload as { message?: string }).message ??
+        rawBody ??
+        "Cohere request failed.";
+      console.error("[arthur] Cohere error", cohereResponse.status, providerError);
+      return NextResponse.json(
+        { error: `Cohere ${cohereResponse.status}: ${providerError}` },
+        { status: cohereResponse.status },
+      );
     }
 
     const text =
@@ -101,9 +112,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ message: text });
-  } catch {
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("[arthur] route exception", error);
     return NextResponse.json(
-      { error: "Arthur could not process that request." },
+      { error: `Arthur could not process that request: ${detail}` },
       { status: 500 },
     );
   }
