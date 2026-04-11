@@ -1,6 +1,6 @@
 "use client";
 
-import { AssistantIcon, CloseIcon } from "@/components/icons";
+import { ArrowUpIcon, AssistantIcon, CloseIcon } from "@/components/icons";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 
 type AssistantMessage = {
@@ -201,7 +201,7 @@ function DrawerContent({
     await sendMessage();
   };
 
-  const handleKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = async (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     await sendMessage();
@@ -224,7 +224,7 @@ function DrawerContent({
       </header>
 
       <div className="min-h-0 flex-1 px-4 py-4">
-        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[12px] border border-zinc-200 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             {messages.length === 0 ? (
               <div className="mx-auto max-w-[260px] pt-6 text-center">
@@ -237,7 +237,7 @@ function DrawerContent({
                   <div
                     key={`${message.role}-${index}`}
                     className={[
-                      "max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-6 shadow-sm",
+                      "max-w-[92%] rounded-[12px] px-3 py-2 text-sm leading-6 shadow-sm",
                       message.role === "assistant"
                         ? "mr-auto border border-zinc-200 bg-white text-zinc-800"
                         : "ml-auto bg-zinc-900 text-white",
@@ -247,7 +247,7 @@ function DrawerContent({
                   </div>
                 ))}
                 {isSending ? (
-                  <div className="mr-auto rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500 shadow-sm">
+                  <div className="mr-auto rounded-[12px] border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500 shadow-sm">
                     Arthur is thinking...
                   </div>
                 ) : null}
@@ -255,15 +255,15 @@ function DrawerContent({
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="border-t border-zinc-200 bg-white p-3">
-            <div className="flex items-end gap-2">
-              <textarea
+          <form onSubmit={handleSubmit} className="border-t border-zinc-200/80 bg-white px-3 py-3">
+            <div className="flex items-center gap-2 rounded-[10px] bg-zinc-50 px-3 py-1.5 ring-1 ring-inset ring-zinc-200/80 transition focus-within:bg-white focus-within:ring-zinc-400">
+              <input
+                type="text"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask Arthur to explain, quiz, or summarize..."
-                rows={2}
-                className="min-h-11 flex-1 resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-800 outline-none focus:border-zinc-400"
+                className="h-9 flex-1 bg-transparent text-sm text-zinc-800 placeholder:text-zinc-400 outline-none"
               />
               <button
                 type="button"
@@ -271,13 +271,14 @@ function DrawerContent({
                   void sendMessage();
                 }}
                 disabled={!draft.trim() || isSending}
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-900 px-4 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-300"
+                aria-label="Send message"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-zinc-900 text-white shadow-[0_6px_16px_rgba(9,9,11,0.18)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
               >
-                Send
+                <ArrowUpIcon className="h-4 w-4" />
               </button>
             </div>
             {errorMessage ? (
-              <p className="mt-2 text-xs text-rose-600">{errorMessage}</p>
+              <p className="mt-2 px-1 text-xs text-rose-600">{errorMessage}</p>
             ) : null}
           </form>
         </div>

@@ -157,7 +157,7 @@ export default function HomePage() {
             </div>
 
             <div
-              className={["h-full min-h-dvh", isSidebarAutoOpen ? "hidden md:block" : ""].join(" ")}
+              className={["h-dvh", isSidebarAutoOpen ? "hidden md:block" : ""].join(" ")}
               onClick={() => {
                 if (!isSidebarAutoOpen) return;
                 setIsSidebarAutoOpen(false);
