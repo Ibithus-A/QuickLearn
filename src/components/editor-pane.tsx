@@ -474,6 +474,8 @@ export function EditorPane({
 
       {selectedNode.kind === "page" ? (
         <EditorActionsDrawer
+          pageTitle={selectedNode.title}
+          pageContent={visiblePageContent}
           onHoverChange={setIsAssistantHovered}
           isMobileOpen={isMobileAssistantOpen}
           onMobileOpenChange={(isOpen) => {
