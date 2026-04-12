@@ -21,15 +21,17 @@ type SignInPortalProps = {
   onContinue: (account: AuthenticatedAccount) => void;
   onClose: () => void;
   showCloseButton?: boolean;
+  initialView?: AuthView;
 };
 
 export function SignInPortal({
   onClose,
   onContinue,
   showCloseButton = true,
+  initialView,
 }: SignInPortalProps) {
   const initialState = getInitialPortalState();
-  const [view, setView] = useState<AuthView>(initialState.view);
+  const [view, setView] = useState<AuthView>(initialView ?? initialState.view);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -159,62 +161,41 @@ export function SignInPortal({
   };
 
   return (
-    <section className="absolute inset-0 z-50 overflow-y-auto bg-black/30 p-3 backdrop-blur-[1px] md:flex md:items-center md:justify-center md:p-4">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_20px_50px_rgba(9,9,11,0.08)] transition-all duration-200 md:my-0 md:p-6">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white">
-              <FlowLogoIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-zinc-900">Excelora Portal</p>
-              <p className="text-xs text-zinc-500">
-                Create your account or sign in
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {showCloseButton ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-                aria-label="Close sign in portal"
-              >
-                <CloseIcon className="h-4 w-4" />
-              </button>
-            ) : null}
-          </div>
+    <section className="relative min-h-dvh w-full bg-[var(--surface-panel)]">
+      {showCloseButton ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
+          aria-label="Back to home"
+        >
+          <CloseIcon className="h-3 w-3" />
+          Back
+        </button>
+      ) : null}
+
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16">
+        <div className="flex flex-col items-center text-center">
+          <FlowLogoIcon className="h-9 w-9" />
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-900">
+            {view === "sign-up"
+              ? "Create your Excelora account"
+              : view === "forgot-password"
+                ? "Reset your password"
+                : "Welcome back"}
+          </h1>
+          <p className="mt-1.5 text-sm text-zinc-500">
+            {view === "sign-up"
+              ? "Start with the notes, upgrade when it clicks."
+              : view === "forgot-password"
+                ? "We will email you a secure link to set a new password."
+                : "Log in to your Excelora workspace."}
+          </p>
         </div>
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
-            <button
-              type="button"
-              onClick={() => switchView("sign-in")}
-              className={[
-                "rounded-md px-3 py-2 text-sm transition",
-                view === "sign-in"
-                  ? "bg-white font-medium text-zinc-900 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-700",
-              ].join(" ")}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView("sign-up")}
-              className={[
-                "rounded-md px-3 py-2 text-sm transition",
-                view === "sign-up"
-                  ? "bg-white font-medium text-zinc-900 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-700",
-              ].join(" ")}
-            >
-              Create Account
-            </button>
-          </div>
+        <div className="mt-8">
 
+        <form className="space-y-3" onSubmit={handleSubmit}>
           {view === "sign-up" ? (
             <div>
               <label className="mb-1 block text-xs font-medium text-zinc-600">
@@ -337,7 +318,7 @@ export function SignInPortal({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
           >
             {isSubmitting
               ? "Please wait..."
@@ -348,6 +329,33 @@ export function SignInPortal({
                   : "Sign In"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-zinc-600">
+          {view === "sign-up" ? (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => switchView("sign-in")}
+                className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+              >
+                Sign in
+              </button>
+            </>
+          ) : view === "sign-in" ? (
+            <>
+              New user?{" "}
+              <button
+                type="button"
+                onClick={() => switchView("sign-up")}
+                className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+              >
+                Sign up
+              </button>
+            </>
+          ) : null}
+        </p>
+        </div>
       </div>
     </section>
   );

@@ -1,0 +1,9 @@
+<svg width="704" height="160" viewBox="0 0 704 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Excelora">
+  <text x="22" y="112" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="700" letter-spacing="1" fill="black">EXCELORA</text>
+  <g transform="translate(400,10)">
+    <polygon points="0,28 52,0 104,28 52,46" fill="black"/>
+    <polygon points="16,34 52,16 88,34 52,50" fill="#1a1a1a"/>
+    <line x1="84" y1="34" x2="84" y2="66" stroke="black" stroke-width="4"/>
+    <circle cx="84" cy="70" r="5" fill="black"/>
+  </g>
+</svg>

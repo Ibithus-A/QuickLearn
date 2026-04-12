@@ -11,6 +11,7 @@ type AssistantMessage = {
 type EditorActionsDrawerProps = {
   pageTitle: string;
   pageContent: string;
+  pageNodeId: string;
   onHoverChange?: (isHovered: boolean) => void;
   isMobileOpen?: boolean;
   onMobileOpenChange?: (isOpen: boolean) => void;
@@ -19,6 +20,7 @@ type EditorActionsDrawerProps = {
 export function EditorActionsDrawer({
   pageTitle,
   pageContent,
+  pageNodeId,
   onHoverChange,
   isMobileOpen = false,
   onMobileOpenChange,
@@ -64,7 +66,7 @@ export function EditorActionsDrawer({
               "group-hover/assistant:translate-x-0 group-hover/assistant:opacity-100",
             ].join(" ")}
           >
-            <DrawerContent pageTitle={pageTitle} pageContent={pageContent} />
+            <DrawerContent pageTitle={pageTitle} pageContent={pageContent} pageNodeId={pageNodeId} />
           </aside>
         </div>
       ) : null}
@@ -123,7 +125,7 @@ export function EditorActionsDrawer({
                   <CloseIcon className="h-4 w-4" />
                 </button>
               </div>
-              <DrawerContent pageTitle={pageTitle} pageContent={pageContent} />
+              <DrawerContent pageTitle={pageTitle} pageContent={pageContent} pageNodeId={pageNodeId} />
             </div>
           </aside>
         </div>
@@ -135,9 +137,11 @@ export function EditorActionsDrawer({
 function DrawerContent({
   pageTitle,
   pageContent,
+  pageNodeId,
 }: {
   pageTitle: string;
   pageContent: string;
+  pageNodeId: string;
 }) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -177,6 +181,7 @@ function DrawerContent({
         body: JSON.stringify({
           pageTitle,
           pageContent,
+          pageNodeId,
           messages: nextMessages,
         }),
       });

@@ -54,12 +54,14 @@ export function EditorPane({
     key: LESSON_PROGRESS_STORAGE_KEY,
     defaultValue: {},
   });
+  const [lessonView, setLessonView] = useState<"notes" | "video">("notes");
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
   const lockInfo = selectedNode
     ? getNodeLockInfo(state, selectedNode.id)
     : DEFAULT_LOCK_INFO;
   const isStudent = role === "student";
+  const canUseAssistant = role === "tutor" || viewerProfile?.plan === "premium";
   const isAccessBlocked =
     isStudent && selectedNode
       ? !canAccessNode(state, selectedNode.id, viewerProfile)
@@ -196,6 +198,10 @@ export function EditorPane({
     );
   }
 
+  useEffect(() => {
+    setLessonView("notes");
+  }, [selectedId]);
+
   const revealWithTransition = (
     nodeId: string | null,
     mode: SurfaceTransitionMode = "fade",
@@ -299,14 +305,93 @@ export function EditorPane({
                   {parentFolder ? (
                     <button
                       type="button"
-                      onClick={() => revealWithTransition(parentFolder.id)}
+                      onClick={() => {
+                        if (!isAssessmentPage && lessonView === "video") {
+                          setLessonView("notes");
+                          return;
+                        }
+                        revealWithTransition(parentFolder.id);
+                      }}
                       className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
                     >
                       <span className="text-sm font-semibold leading-none text-zinc-900">-</span>
-                      Back to {parentFolder.title}
+                      {!isAssessmentPage && lessonView === "video"
+                        ? "Back to notes"
+                        : `Back to ${parentFolder.title}`}
                     </button>
                   ) : null}
 
+                  {!isAssessmentPage && lessonView === "notes" ? (
+                    <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+                      <div className="border-b border-zinc-200/80 bg-[linear-gradient(135deg,rgba(244,244,245,0.95),rgba(255,255,255,1))] px-4 py-4 md:px-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                              Lesson Notes
+                            </p>
+                            <p className="mt-1 text-sm text-zinc-600">
+                              Read the notes below, or watch the full walkthrough
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setLessonView("video")}
+                            className="inline-flex items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800"
+                          >
+                            <span className="ml-0.5 leading-none">▶</span>
+                            Watch the video here
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-5 md:px-5">
+                        <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(244,244,245,0.92))]">
+                          <object
+                            data={`/pdfs/${selectedNode.id}.pdf#view=FitH`}
+                            type="application/pdf"
+                            className="block h-[720px] w-full bg-white"
+                          >
+                            <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-6 text-center">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-zinc-200 bg-white shadow-sm">
+                                <span className="text-xl font-semibold text-zinc-700">PDF</span>
+                              </div>
+                              <div>
+                                <p className="text-base font-medium text-zinc-900">
+                                  Notes coming soon
+                                </p>
+                                <p className="mt-1 text-sm text-zinc-500">
+                                  The notes for this subtopic will appear here shortly.
+                                </p>
+                              </div>
+                            </div>
+                          </object>
+                        </div>
+
+                        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              revealWithTransition(lessonContext.previousLessonId, "previous")
+                            }
+                            disabled={!lessonContext.previousLessonId}
+                            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+                          >
+                            Previous Lesson
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              revealWithTransition(nextLessonActionId, "next")
+                            }
+                            disabled={!nextLessonActionId}
+                            className="inline-flex w-full items-center justify-center rounded-full border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-300 sm:w-auto"
+                          >
+                            {nextLessonActionLabel}
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+                  ) : (
                   <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
                     <div className="border-b border-zinc-200/80 bg-[linear-gradient(135deg,rgba(244,244,245,0.95),rgba(255,255,255,1))] px-4 py-4 md:px-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -321,7 +406,7 @@ export function EditorPane({
                           </p>
                         </div>
                         <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-                          {isAssessmentPage ? "PDF" : "5-10 min"}
+                          {isAssessmentPage ? "PDF" : "Coming Soon"}
                         </span>
                       </div>
                     </div>
@@ -353,11 +438,14 @@ export function EditorPane({
                               <span className="ml-1 text-2xl text-zinc-700">▶</span>
                             </div>
                             <div>
-                              <p className="text-base font-medium text-zinc-900">
-                                Video placeholder
+                              <span className="inline-flex items-center rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white">
+                                Coming Soon
+                              </span>
+                              <p className="mt-3 text-base font-medium text-zinc-900">
+                                Video walkthrough in the works
                               </p>
                               <p className="mt-1 text-sm text-zinc-500">
-                                Add the lesson recording here when it is ready
+                                Premium lesson recordings will appear here shortly.
                               </p>
                             </div>
                           </div>
@@ -422,6 +510,7 @@ export function EditorPane({
                       </div>
                     </div>
                   </section>
+                  )}
 
                   <section className="rounded-[24px] border border-zinc-200 bg-white px-5 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
                     <div className="flex flex-wrap items-end justify-between gap-3">
@@ -472,10 +561,11 @@ export function EditorPane({
         </div>
       )}
 
-      {selectedNode.kind === "page" ? (
+      {selectedNode.kind === "page" && canUseAssistant ? (
         <EditorActionsDrawer
           pageTitle={selectedNode.title}
           pageContent={visiblePageContent}
+          pageNodeId={selectedNode.id}
           onHoverChange={setIsAssistantHovered}
           isMobileOpen={isMobileAssistantOpen}
           onMobileOpenChange={(isOpen) => {

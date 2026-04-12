@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPdfTextForNode } from "@/lib/pdf-text";
 
 type AssistantMessage = {
   role: "user" | "assistant";
@@ -8,6 +9,7 @@ type AssistantMessage = {
 type ArthurRequestBody = {
   pageTitle?: string;
   pageContent?: string;
+  pageNodeId?: string;
   messages?: AssistantMessage[];
 };
 
@@ -15,10 +17,11 @@ const COHERE_API_URL = "https://api.cohere.com/v2/chat";
 const ARTHUR_SYSTEM_PROMPT = `
 You are Arthur, a friendly AI study assistant inside the Excelora workspace.
 Be concise, accurate, and encouraging.
-Use the provided page title and page content as the primary context when answering.
-If the page content is sparse or missing, say that you are working from limited page context.
+Use the provided page title, page content, and lesson notes (extracted from the subtopic PDF) as the primary context when answering.
+Treat the lesson notes as the authoritative source for this subtopic — quote, paraphrase, and reason from them directly when answering questions.
+If the page content and lesson notes are both sparse or missing, say that you are working from limited context.
 Prefer helpful study actions like explanation, recap, quizzes, worked examples, and revision support.
-Do not claim to see anything outside the provided page context and user messages.
+Do not claim to see anything outside the provided page context, lesson notes, and user messages.
 `.trim();
 
 export async function POST(request: Request) {
@@ -35,7 +38,17 @@ export async function POST(request: Request) {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const pageTitle = body.pageTitle?.trim() ?? "Untitled page";
     const pageContent = body.pageContent?.trim() ?? "";
+    const pageNodeId = body.pageNodeId?.trim() ?? "";
     const latestUserMessage = messages[messages.length - 1];
+
+    let lessonNotes = "";
+    if (pageNodeId) {
+      try {
+        lessonNotes = (await readPdfTextForNode(pageNodeId)) ?? "";
+      } catch (error) {
+        console.error("[arthur] pdf extraction failed", pageNodeId, error);
+      }
+    }
 
     if (!latestUserMessage || latestUserMessage.role !== "user" || !latestUserMessage.content.trim()) {
       return NextResponse.json(
@@ -64,7 +77,7 @@ export async function POST(request: Request) {
             content: [
               {
                 type: "text",
-                text: `${ARTHUR_SYSTEM_PROMPT}\n\nPage title: ${pageTitle}\n\nPage content:\n${pageContent || "(blank page)"}`,
+                text: `${ARTHUR_SYSTEM_PROMPT}\n\nPage title: ${pageTitle}\n\nPage content:\n${pageContent || "(blank page)"}\n\nLesson notes (extracted from the subtopic PDF):\n${lessonNotes || "(no PDF notes available for this subtopic yet)"}`,
               },
             ],
           },

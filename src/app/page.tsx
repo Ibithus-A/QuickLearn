@@ -3,6 +3,7 @@
 import { DashboardHome } from "@/components/dashboard-home";
 import { EditorPane } from "@/components/editor-pane";
 import { MenuIcon } from "@/components/icons";
+import { LandingPage } from "@/components/landing-page";
 import { SignInPortal } from "@/components/sign-in-portal";
 import { Sidebar } from "@/components/sidebar";
 import { FlowStateProvider } from "@/context/flowstate-context";
@@ -19,6 +20,7 @@ const PORTAL_CONTAINER_CLASS = "relative min-h-dvh w-full overflow-hidden bg-[va
 export default function HomePage() {
   const [view, setView] = useState<AppView>("workspace");
   const [isSidebarAutoOpen, setIsSidebarAutoOpen] = useState(false);
+  const [signInView, setSignInView] = useState<"sign-in" | "sign-up" | null>(null);
   const { currentUser, setAuthenticatedUser, signOut } = useAuthSession();
   const { viewerProfile, students, updateStudentAccess, deleteStudent } = useStudents(currentUser?.email);
   const effectiveCurrentUser = useMemo(
@@ -45,6 +47,7 @@ export default function HomePage() {
 
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
     setAuthenticatedUser(account);
+    setSignInView(null);
     setView("dashboard");
   };
 
@@ -67,13 +70,21 @@ export default function HomePage() {
     <FlowStateProvider>
       <main className="min-h-dvh w-full bg-[var(--surface-app)]">
         {!effectiveCurrentUser ? (
-          <div className={PORTAL_CONTAINER_CLASS}>
-            <SignInPortal
-              onClose={() => {}}
-              onContinue={handleContinueFromSignIn}
-              showCloseButton={false}
+          signInView ? (
+            <div className={PORTAL_CONTAINER_CLASS}>
+              <SignInPortal
+                onClose={() => setSignInView(null)}
+                onContinue={handleContinueFromSignIn}
+                showCloseButton
+                initialView={signInView}
+              />
+            </div>
+          ) : (
+            <LandingPage
+              onSignIn={() => setSignInView("sign-in")}
+              onGetStarted={() => setSignInView("sign-up")}
             />
-          </div>
+          )
         ) : view === "dashboard" ? (
           <DashboardHome
             name={effectiveCurrentUser.name}
