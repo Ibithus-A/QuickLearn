@@ -157,7 +157,6 @@ export function useStudentProgress(
     selectedStudent,
     selectedStudentPlan: selectedStudent?.plan ?? "basic",
     activeStudentUnlocks,
-    selectedStudentCustomUnlocks: selectedStudent?.customUnlockedChapterTitles ?? [],
     currentStudentStats,
     selectedStudentMilestone,
     chapterTagsByTitle,

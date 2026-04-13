@@ -32,7 +32,6 @@ export default function HomePage() {
     selectedStudent,
     selectedStudentPlan,
     activeStudentUnlocks,
-    selectedStudentCustomUnlocks,
     currentStudentStats,
     selectedStudentMilestone,
     chapterTagsByTitle,
@@ -102,7 +101,6 @@ export default function HomePage() {
             selectedStudentMilestone={selectedStudentMilestone}
             chapterTagsByTitle={chapterTagsByTitle}
             accessibleChapterTitles={activeStudentUnlocks}
-            customUnlockedChapterTitles={selectedStudentCustomUnlocks}
             onSelectStudent={selectStudent}
             onSetStudentPlan={setPlanForSelectedStudent}
             onSetMilestoneChapter={setMilestoneForSelectedStudent}

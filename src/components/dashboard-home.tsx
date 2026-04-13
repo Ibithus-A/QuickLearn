@@ -28,7 +28,6 @@ type DashboardHomeProps = {
   selectedStudentMilestone?: string | null;
   chapterTagsByTitle?: Record<string, Array<{ id: string; name: string; email: string }>>;
   accessibleChapterTitles?: string[];
-  customUnlockedChapterTitles?: string[];
   onSelectStudent?: (studentId: string) => void;
   onSetStudentPlan?: (plan: UserPlan) => Promise<void>;
   onSetMilestoneChapter?: (chapterTitle: string) => Promise<void>;
@@ -51,7 +50,6 @@ export function DashboardHome({
   selectedStudentMilestone,
   chapterTagsByTitle = {},
   accessibleChapterTitles = [],
-  customUnlockedChapterTitles = [],
   onSelectStudent,
   onSetStudentPlan,
   onSetMilestoneChapter,
@@ -235,7 +233,7 @@ export function DashboardHome({
                       <p className="truncate text-xs text-zinc-500">{selectedStudent.email}</p>
                     ) : (
                       <p className="text-xs text-zinc-500">
-                        Search above to load a student's workspace.
+                        Search above to load a student&apos;s workspace.
                       </p>
                     )}
                   </div>
@@ -379,26 +377,14 @@ export function DashboardHome({
                 const isUnlocked =
                   isAlwaysUnlocked || accessibleChapterTitles.includes(chapterTitle);
                 const isMilestone = selectedStudentMilestone === chapterTitle;
-                const isCustomUnlocked = customUnlockedChapterTitles.includes(chapterTitle);
-                const milestoneIndex = selectedStudentMilestone
-                  ? chapterTitles.indexOf(selectedStudentMilestone)
-                  : -1;
-                const chapterIndex = chapterTitles.indexOf(chapterTitle);
-                const isManagedByTag =
-                  milestoneIndex >= 0 &&
-                  chapterIndex >= 0 &&
-                  chapterIndex <= milestoneIndex &&
-                  !isCustomUnlocked;
                 const chapterTags = chapterTagsByTitle[chapterTitle] ?? [];
 
-                const lockDisabled = isAlwaysUnlocked || isManagedByTag;
+                const lockDisabled = isAlwaysUnlocked;
                 const lockLabel = isAlwaysUnlocked
                   ? "Always unlocked"
-                  : isManagedByTag
-                    ? "Unlocked via current chapter tag"
-                    : isUnlocked
-                      ? "Unlocked · click to lock"
-                      : "Locked · click to unlock";
+                  : isUnlocked
+                    ? "Unlocked · click to lock"
+                    : "Locked · click to unlock";
 
                 return (
                   <div

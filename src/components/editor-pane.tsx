@@ -24,6 +24,11 @@ type EditorPaneProps = {
 
 type LessonProgressMap = Record<string, boolean>;
 type SurfaceTransitionMode = "fade" | "next" | "previous";
+type LessonSurfaceState = {
+  nodeId: string | null;
+  view: "notes" | "video";
+  pdfZoom: number;
+};
 
 const MAX_TITLE_FONT_SIZE_PX = 36;
 const MIN_TITLE_FONT_SIZE_PX = 20;
@@ -67,8 +72,11 @@ export function EditorPane({
     key: LESSON_PROGRESS_STORAGE_KEY,
     defaultValue: {},
   });
-  const [lessonView, setLessonView] = useState<"notes" | "video">("notes");
-  const [pdfZoom, setPdfZoom] = useState(100);
+  const [lessonSurface, setLessonSurface] = useState<LessonSurfaceState>({
+    nodeId: null,
+    view: "notes",
+    pdfZoom: 100,
+  });
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
   const lockInfo = selectedNode
@@ -148,6 +156,10 @@ export function EditorPane({
         ? "surface-transition-previous"
         : "surface-transition-fade";
   const isMobileAssistantOpen = !!selectedId && mobileAssistantNodeId === selectedId;
+  const lessonView =
+    lessonSurface.nodeId === selectedId ? lessonSurface.view : "notes";
+  const pdfZoom =
+    lessonSurface.nodeId === selectedId ? lessonSurface.pdfZoom : 100;
 
   useEffect(() => {
     const titleInput = titleInputRef.current;
@@ -211,11 +223,6 @@ export function EditorPane({
       </section>
     );
   }
-
-  useEffect(() => {
-    setLessonView("notes");
-    setPdfZoom(100);
-  }, [selectedId]);
 
   const revealWithTransition = (
     nodeId: string | null,
@@ -322,7 +329,11 @@ export function EditorPane({
                       type="button"
                       onClick={() => {
                         if (!isAssessmentPage && lessonView === "video") {
-                          setLessonView("notes");
+                          setLessonSurface({
+                            nodeId: selectedId,
+                            view: "notes",
+                            pdfZoom,
+                          });
                           return;
                         }
                         revealWithTransition(parentFolder.id);
@@ -356,7 +367,14 @@ export function EditorPane({
                             >
                               <button
                                 type="button"
-                                onClick={() => setPdfZoom((z) => Math.max(50, z - 10))}
+                                onClick={() =>
+                                  setLessonSurface((current) => ({
+                                    nodeId: selectedId,
+                                    view:
+                                      current.nodeId === selectedId ? current.view : lessonView,
+                                    pdfZoom: Math.max(50, (current.nodeId === selectedId ? current.pdfZoom : 100) - 10),
+                                  }))
+                                }
                                 disabled={pdfZoom <= 50}
                                 aria-label="Zoom out"
                                 title="Zoom out"
@@ -371,7 +389,14 @@ export function EditorPane({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => setPdfZoom((z) => Math.min(200, z + 10))}
+                                onClick={() =>
+                                  setLessonSurface((current) => ({
+                                    nodeId: selectedId,
+                                    view:
+                                      current.nodeId === selectedId ? current.view : lessonView,
+                                    pdfZoom: Math.min(200, (current.nodeId === selectedId ? current.pdfZoom : 100) + 10),
+                                  }))
+                                }
                                 disabled={pdfZoom >= 200}
                                 aria-label="Zoom in"
                                 title="Zoom in"
@@ -384,7 +409,13 @@ export function EditorPane({
                             </div>
                             <button
                               type="button"
-                              onClick={() => setLessonView("video")}
+                              onClick={() =>
+                                setLessonSurface({
+                                  nodeId: selectedId,
+                                  view: "video",
+                                  pdfZoom,
+                                })
+                              }
                               className="inline-flex items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800"
                             >
                               <span className="ml-0.5 leading-none">▶</span>

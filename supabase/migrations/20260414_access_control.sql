@@ -7,29 +7,18 @@ language plpgsql
 as $$
 declare
   allowed_chapters text[] := array[
-    'Chapter 1: Algebra 1',
-    'Chapter 2: Polynomials and the binomial theorem',
-    'Chapter 3: Trigonometry',
-    'Chapter 4: Differentiation and integration',
-    'Chapter 5: Exponentials and logarithms',
-    'Chapter 6: Vectors',
-    'Chapter 7: Units and kinematics',
-    'Chapter 8: Forces and Newton''s laws',
-    'Chapter 9: Collecting, representing and interpreting data',
-    'Chapter 10: Probability and discrete random variables',
-    'Chapter 11: Hypothesis testing 1',
-    'Chapter 12: Algebra 2',
-    'Chapter 13: Sequences',
-    'Chapter 14: Trigonometric identities',
-    'Chapter 15: Differentiation 2',
-    'Chapter 16: Integration and differential equations',
-    'Chapter 17: Numerical methods',
-    'Chapter 18: Motion in two dimensions',
-    'Chapter 19: Forces 2',
-    'Chapter 20: Probability and continuous random variables',
-    'Chapter 21: Hypothesis testing 2'
+    'Chapter 1: Algebra and Functions',
+    'Chapter 2: Proof',
+    'Chapter 3: Coordinate Geometry',
+    'Chapter 4: Sequences and Series',
+    'Chapter 5: Trigonometry',
+    'Chapter 6: Exponentials and Logarithms',
+    'Chapter 7: Differentiation',
+    'Chapter 8: Integration',
+    'Chapter 9: Numerical Methods',
+    'Chapter 10: Vectors'
   ];
-  chapter_one constant text := 'Chapter 1: Algebra 1';
+  chapter_one constant text := 'Chapter 1: Algebra and Functions';
   sanitized_tagged_chapter text;
 begin
   new.email = lower(trim(new.email));
@@ -58,11 +47,6 @@ begin
       from unnest(coalesce(new.unlocked_chapters, array[]::text[])) as chapter
       where chapter = any (allowed_chapters)
         and chapter <> chapter_one
-        and (
-          sanitized_tagged_chapter is null
-          or array_position(allowed_chapters, chapter)
-            > array_position(allowed_chapters, sanitized_tagged_chapter)
-        )
     ) sanitized_chapters
   );
 
@@ -95,8 +79,8 @@ begin
       else 'student'::public.app_role
     end,
     'basic'::public.app_plan,
-    'Chapter 1: Algebra 1',
-    array['Chapter 1: Algebra 1']::text[]
+    'Chapter 1: Algebra and Functions',
+    array[]::text[]
   )
   on conflict (id) do update
   set
@@ -107,7 +91,7 @@ begin
     end,
     tagged_chapter = case
       when public.profiles.role = 'student' and public.profiles.plan = 'basic'
-        then 'Chapter 1: Algebra 1'
+        then 'Chapter 1: Algebra and Functions'
       else public.profiles.tagged_chapter
     end;
 
@@ -116,7 +100,30 @@ end;
 $$;
 
 update public.profiles
-set tagged_chapter = 'Chapter 1: Algebra 1'
-where role = 'student'
-  and plan = 'basic'
-  and tagged_chapter is distinct from 'Chapter 1: Algebra 1';
+set
+  tagged_chapter = case
+    when role = 'student' and plan = 'basic' then 'Chapter 1: Algebra and Functions'
+    else tagged_chapter
+  end,
+  unlocked_chapters = unlocked_chapters;
+
+update public.profiles
+set role = 'tutor',
+    plan = 'premium',
+    unlocked_chapters = array[
+      'Chapter 1: Algebra and Functions',
+      'Chapter 2: Proof',
+      'Chapter 3: Coordinate Geometry',
+      'Chapter 4: Sequences and Series',
+      'Chapter 5: Trigonometry',
+      'Chapter 6: Exponentials and Logarithms',
+      'Chapter 7: Differentiation',
+      'Chapter 8: Integration',
+      'Chapter 9: Numerical Methods',
+      'Chapter 10: Vectors'
+    ]
+where email = 'ibrahimahmed@outlook.com';
+
+update public.profiles
+set full_name = 'Ibrahim'
+where role = 'tutor';
