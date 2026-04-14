@@ -259,3 +259,51 @@ export function MathsIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function FacebookIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M13.4 20v-6.3h2.1l.3-2.4h-2.4V9c0-.7.2-1.2 1.2-1.2H16V5.7c-.4-.1-.9-.1-1.6-.1-1.7 0-2.8 1-2.8 2.9v2.8H9.8v2.4h1.8V20Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function InstagramIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="5.25" y="5.25" width="13.5" height="13.5" rx="4" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="3.3" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="16.6" cy="7.6" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function LinkedInIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path d="M7.5 10v8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path
+        d="M11.8 18v-4.5c0-1.4 1-2.4 2.3-2.4 1.4 0 2.2.9 2.2 2.7V18"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="7.5" cy="7.1" r="1.05" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function TikTokIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M13.6 5.2c.4 1.3 1.5 2.4 2.9 2.9v2a5.9 5.9 0 0 1-2.9-1v4.4a4.1 4.1 0 1 1-4.1-4.1c.3 0 .5 0 .8.1v2.1a2 2 0 1 0 1.2 1.9v-9h2.1v.7Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

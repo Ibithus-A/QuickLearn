@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRightIcon, AssistantIcon, FolderIcon } from "@/components/icons";
+import {
+  ChevronRightIcon,
+  AssistantIcon,
+  FolderIcon,
+  FacebookIcon,
+  InstagramIcon,
+  LinkedInIcon,
+  TikTokIcon,
+} from "@/components/icons";
 
 type LandingPageProps = {
   onSignIn: () => void;
@@ -135,9 +143,33 @@ const WORKSPACE_SHOWCASE_ITEMS: WorkspaceShowcaseItem[] = [
   },
 ];
 
+const FOOTER_SOCIAL_LINKS = [
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/share/1AjaVWMcEy/?mibextid=wwXIfr",
+    icon: FacebookIcon,
+  },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/_excelora_?igsh=bm93cmwxZjR4MGI0&utm_source=qr",
+    icon: InstagramIcon,
+  },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/ibrahim-ahmed-394b472b6/",
+    icon: LinkedInIcon,
+  },
+  {
+    label: "TikTok",
+    href: "https://www.tiktok.com/@excelora.tutors?_r=1&_t=ZN-94J0eBjGJK2",
+    icon: TikTokIcon,
+  },
+] as const;
+
 export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
   const copyrightYear = new Date().getFullYear();
   const [isIntroVisible, setIsIntroVisible] = useState(false);
+  const [revealCycle, setRevealCycle] = useState(0);
   const [workspaceShowcaseIndex, setWorkspaceShowcaseIndex] = useState(0);
 
   useEffect(() => {
@@ -157,6 +189,47 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
   }, []);
 
   const activeWorkspaceShowcase = WORKSPACE_SHOWCASE_ITEMS[workspaceShowcaseIndex];
+
+  const handleFooterLogoClick = () => {
+    if (typeof window === "undefined") return;
+
+    setIsIntroVisible(false);
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+
+    const finalizeReset = () => {
+      setRevealCycle((current) => current + 1);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          setIsIntroVisible(true);
+        });
+      });
+    };
+
+    if (prefersReducedMotion || window.scrollY <= 8) {
+      finalizeReset();
+      return;
+    }
+
+    let attempts = 0;
+
+    const waitForTop = () => {
+      attempts += 1;
+
+      if (window.scrollY <= 8 || attempts > 180) {
+        finalizeReset();
+        return;
+      }
+
+      window.requestAnimationFrame(waitForTop);
+    };
+
+    window.requestAnimationFrame(waitForTop);
+  };
 
   return (
     <div className="relative min-h-dvh w-full overflow-hidden bg-[var(--surface-app)]">
@@ -242,7 +315,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       {/* Features — Notion-style grid of tinted cards */}
       <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
-        <RevealOnScroll>
+        <RevealOnScroll resetKey={revealCycle}>
           <div className="max-w-3xl">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Features
@@ -253,9 +326,9 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll delay={120}>
+        <RevealOnScroll delay={120} resetKey={revealCycle}>
           <div className="mt-12 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
-            <RevealOnScroll delay={40}>
+            <RevealOnScroll delay={40} resetKey={revealCycle}>
               <FeatureCard
                 className="h-full"
                 tint="bg-[#e8efe9]"
@@ -264,7 +337,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
                 preview={<NotesPreview />}
               />
             </RevealOnScroll>
-            <RevealOnScroll delay={130}>
+            <RevealOnScroll delay={130} resetKey={revealCycle}>
               <FeatureCard
                 className="h-full"
                 tint="bg-[#eef2f7]"
@@ -273,7 +346,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
                 preview={<VideoPreview />}
               />
             </RevealOnScroll>
-            <RevealOnScroll delay={220}>
+            <RevealOnScroll delay={220} resetKey={revealCycle}>
               <FeatureCard
                 className="h-full"
                 tint="bg-[#f3eee6]"
@@ -282,7 +355,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
                 preview={<ArthurPreview />}
               />
             </RevealOnScroll>
-            <RevealOnScroll delay={310}>
+            <RevealOnScroll delay={310} resetKey={revealCycle}>
               <FeatureCard
                 className="h-full"
                 tint="bg-[#eef0ea]"
@@ -297,7 +370,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       {/* How it works — three connected steps with workspace surfaces */}
       <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
-        <RevealOnScroll>
+        <RevealOnScroll resetKey={revealCycle}>
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               How it works
@@ -308,7 +381,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll delay={120}>
+        <RevealOnScroll delay={120} resetKey={revealCycle}>
           <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
             <StepCard
               step={1}
@@ -334,7 +407,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       {/* Pricing */}
       <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
-        <RevealOnScroll>
+        <RevealOnScroll resetKey={revealCycle}>
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Pricing
@@ -345,7 +418,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll delay={120}>
+        <RevealOnScroll delay={120} resetKey={revealCycle}>
           <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">
             <article className="flex h-full flex-col rounded-[28px] border border-zinc-200 bg-white p-8 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
               <div className="flex items-center justify-between">
@@ -411,7 +484,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       {/* Closing CTA */}
       <section className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24">
-        <RevealOnScroll>
+        <RevealOnScroll resetKey={revealCycle}>
           <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-10 text-center shadow-[0_30px_80px_rgba(15,23,42,0.06)] md:p-14">
             <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-zinc-900 md:text-4xl">
               Ready to find your flow?
@@ -431,18 +504,52 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
         </RevealOnScroll>
       </section>
 
-      <RevealOnScroll delay={80}>
-        <footer className="relative z-10 border-t border-zinc-200 bg-white/70">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-6 text-center md:flex-row md:text-left">
-            <Image
-              src="/assets/excelora-logo.svg"
-              alt="Excelora"
-              width={105}
-              height={28}
-              className="h-7 w-auto select-none"
-              draggable={false}
-            />
-            <p className="text-sm text-zinc-500">© {copyrightYear} Excelora. All rights reserved.</p>
+      <RevealOnScroll delay={80} resetKey={revealCycle}>
+        <footer className="relative z-10">
+          <div className="mx-auto w-full max-w-6xl px-6 pb-10">
+            <div className="rounded-[28px] border border-zinc-200/80 bg-white/75 px-7 py-7 shadow-[0_18px_50px_rgba(15,23,42,0.04)] backdrop-blur-sm md:px-8 md:py-8">
+              <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                  <div className="max-w-xl">
+                    <button
+                      type="button"
+                      aria-label="Scroll to top"
+                      onClick={handleFooterLogoClick}
+                      className="inline-flex origin-left transition duration-200 ease-out hover:scale-[1.035]"
+                    >
+                      <Image
+                        src="/assets/excelora-logo.svg"
+                        alt="Excelora"
+                        width={148}
+                        height={34}
+                        className="h-9 w-auto select-none"
+                        draggable={false}
+                      />
+                    </button>
+                    <p className="mt-5 max-w-md text-sm leading-5 text-zinc-500">
+                      Premium Maths tuition for GCSE & A-Level learners — structured,
+                      exam-focused, and built for measurable progress.
+                    </p>
+                  </div>
+                  <nav aria-label="Social links" className="flex items-center gap-2.5 text-black">
+                    {FOOTER_SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+                      <a
+                        key={label}
+                        href={href}
+                        aria-label={label}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-black/92 transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-black/[0.035] hover:text-black"
+                      >
+                        <Icon className="h-[21px] w-[21px]" />
+                      </a>
+                    ))}
+                  </nav>
+                </div>
+                <div className="h-px w-full bg-zinc-200" />
+                <p className="text-sm text-zinc-500">© {copyrightYear} Excelora. All Rights Reserved.</p>
+              </div>
+            </div>
           </div>
         </footer>
       </RevealOnScroll>
@@ -454,13 +561,19 @@ function RevealOnScroll({
   children,
   className = "",
   delay = 0,
+  resetKey = 0,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  resetKey?: number;
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIsVisible(false);
+  }, [resetKey]);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -483,7 +596,7 @@ function RevealOnScroll({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, []);
+  }, [resetKey]);
 
   return (
     <div
