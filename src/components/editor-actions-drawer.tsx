@@ -630,7 +630,7 @@ function normalizeAssistantContent(content: string) {
     .replace(/\r\n/g, "\n")
     .replace(/\\\[/g, "$$")
     .replace(/\\\]/g, "$$")
-    .replace(/\\\((.*?)\\\)/gs, (_, math: string) => `$${math.trim()}$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, math: string) => `$${math.trim()}$`)
     .replace(/\\([*_`])/g, "$1")
     .replace(/\*{3,}/g, "")
     .replace(/\*\*\s*(Worked Example|Worked example)\s*:?\s*\*\*/g, "\n\nWorked example.")

@@ -145,7 +145,7 @@ function normalizeArthurResponse(input: string) {
     .replace(/\r\n/g, "\n")
     .replace(/\\\[/g, "$$")
     .replace(/\\\]/g, "$$")
-    .replace(/\\\((.*?)\\\)/gs, "$$$1$")
+    .replace(/\\\(([\s\S]*?)\\\)/g, "$$$1$")
     .replace(/\\([*_`])/g, "$1")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
