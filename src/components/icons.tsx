@@ -245,3 +245,17 @@ export function AssistantIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function MathsIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+      <rect x="3.5" y="3.5" width="13" height="13" rx="3" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M6.5 7.2h3M8 5.7v3M11.8 6.1h2.7M11.8 8.2h2.7M6.6 12.2h3M6.6 14.2h3M12.1 11.7l2.3 2.3M14.4 11.7l-2.3 2.3"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

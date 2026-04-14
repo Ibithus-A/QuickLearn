@@ -1,8 +1,16 @@
 "use client";
 
-import { ArrowUpIcon, AssistantIcon, CloseIcon } from "@/components/icons";
+import { ArrowUpIcon, AssistantIcon, CloseIcon, MathsIcon } from "@/components/icons";
 import katex from "katex";
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type AssistantMessage = {
   role: "user" | "assistant";
@@ -16,6 +24,41 @@ type MessageSegment =
 type AssistantBlock =
   | { type: "divider" }
   | { type: "paragraph"; content: string };
+
+type MathShortcut = {
+  label: string;
+  insert: string;
+  caretOffset?: number;
+  ariaLabel: string;
+  className?: string;
+  latexLabel?: string;
+};
+
+const MATH_SHORTCUTS: MathShortcut[] = [
+  { label: "( )", latexLabel: "\\left(\\,\\right)", insert: "()", caretOffset: -1, ariaLabel: "Insert brackets" },
+  { label: "x²", latexLabel: "x^2", insert: "x²", caretOffset: 0, ariaLabel: "Insert squared" },
+  { label: "xⁿ", latexLabel: "x^n", insert: "x^()", caretOffset: -1, ariaLabel: "Insert power" },
+  { label: "√x", latexLabel: "\\sqrt{x}", insert: "√()", caretOffset: -1, ariaLabel: "Insert square root" },
+  { label: "a/b", latexLabel: "\\frac{a}{b}", insert: "()/()", caretOffset: -4, ariaLabel: "Insert fraction template" },
+  { label: "∫", latexLabel: "\\int", insert: "∫ ", caretOffset: 0, ariaLabel: "Insert integral" },
+  { label: "d/dx", latexLabel: "\\frac{d}{dx}", insert: "d/dx ", caretOffset: 0, ariaLabel: "Insert derivative" },
+  { label: "π", latexLabel: "\\pi", insert: "π", caretOffset: 0, ariaLabel: "Insert pi" },
+  { label: "θ", latexLabel: "\\theta", insert: "θ", caretOffset: 0, ariaLabel: "Insert theta" },
+  { label: "≤", latexLabel: "\\leq", insert: " ≤ ", caretOffset: 0, ariaLabel: "Insert less than or equal to" },
+  { label: "≥", latexLabel: "\\geq", insert: " ≥ ", caretOffset: 0, ariaLabel: "Insert greater than or equal to" },
+  { label: "≠", latexLabel: "\\neq", insert: " ≠ ", caretOffset: 0, ariaLabel: "Insert not equal to" },
+  { label: "±", latexLabel: "\\pm", insert: " ± ", caretOffset: 0, ariaLabel: "Insert plus or minus" },
+  { label: "sin", latexLabel: "\\sin(x)", insert: "sin()", caretOffset: -1, ariaLabel: "Insert sine" },
+  { label: "cos", latexLabel: "\\cos(x)", insert: "cos()", caretOffset: -1, ariaLabel: "Insert cosine" },
+  { label: "tan", latexLabel: "\\tan(x)", insert: "tan()", caretOffset: -1, ariaLabel: "Insert tangent" },
+  { label: "sin⁻¹", latexLabel: "\\sin^{-1}(x)", insert: "sin⁻¹()", caretOffset: -1, ariaLabel: "Insert inverse sine" },
+  { label: "cos⁻¹", latexLabel: "\\cos^{-1}(x)", insert: "cos⁻¹()", caretOffset: -1, ariaLabel: "Insert inverse cosine" },
+  { label: "tan⁻¹", latexLabel: "\\tan^{-1}(x)", insert: "tan⁻¹()", caretOffset: -1, ariaLabel: "Insert inverse tangent" },
+  { label: "log", latexLabel: "\\log(x)", insert: "log()", caretOffset: -1, ariaLabel: "Insert logarithm" },
+  { label: "ln", latexLabel: "\\ln(x)", insert: "ln()", caretOffset: -1, ariaLabel: "Insert natural logarithm" },
+  { label: "eˣ", latexLabel: "e^x", insert: "e^()", caretOffset: -1, ariaLabel: "Insert exponential" },
+  { label: "|x|", latexLabel: "\\left|x\\right|", insert: "| |", caretOffset: -2, ariaLabel: "Insert modulus" },
+];
 
 type EditorActionsDrawerProps = {
   pageTitle: string;
@@ -156,11 +199,14 @@ function DrawerContent({
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isMathsOpen, setIsMathsOpen] = useState(false);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setMessages([]);
     setDraft("");
     setErrorMessage("");
+    setIsMathsOpen(false);
   }, [pageTitle]);
 
   const helperText = useMemo(() => {
@@ -215,10 +261,36 @@ function DrawerContent({
     await sendMessage();
   };
 
-  const handleKeyDown = async (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     await sendMessage();
+  };
+
+  const insertShortcut = (shortcut: MathShortcut) => {
+    const composer = composerRef.current;
+    const insertText = shortcut.insert;
+
+    if (!composer) {
+      setDraft((current) => `${current}${insertText}`);
+      return;
+    }
+
+    const selectionStart = composer.selectionStart ?? draft.length;
+    const selectionEnd = composer.selectionEnd ?? draft.length;
+    const nextDraft =
+      draft.slice(0, selectionStart) + insertText + draft.slice(selectionEnd);
+    const nextCaret =
+      selectionStart +
+      insertText.length +
+      (shortcut.caretOffset ?? 0);
+
+    setDraft(nextDraft);
+
+    requestAnimationFrame(() => {
+      composer.focus();
+      composer.setSelectionRange(nextCaret, nextCaret);
+    });
   };
 
   return (
@@ -260,7 +332,7 @@ function DrawerContent({
                     {message.role === "assistant" ? (
                       <RenderedAssistantMessage content={message.content} />
                     ) : (
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      <RenderedUserMessage content={message.content} />
                     )}
                   </div>
                 ))}
@@ -274,26 +346,58 @@ function DrawerContent({
           </div>
 
           <form onSubmit={handleSubmit} className="border-t border-zinc-200/80 bg-white px-3 py-3">
-            <div className="flex items-center gap-2 rounded-[10px] bg-zinc-50 px-3 py-1.5 ring-1 ring-inset ring-zinc-200/80 transition focus-within:bg-white focus-within:ring-zinc-400">
-              <input
-                type="text"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask Arthur to explain, quiz, or summarize..."
-                className="h-9 flex-1 bg-transparent text-sm text-zinc-800 placeholder:text-zinc-400 outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  void sendMessage();
-                }}
-                disabled={!draft.trim() || isSending}
-                aria-label="Send message"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-zinc-900 text-white shadow-[0_6px_16px_rgba(9,9,11,0.18)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
-              >
-                <ArrowUpIcon className="h-4 w-4" />
-              </button>
+            <div className="space-y-2 rounded-[12px] bg-zinc-50 px-2.5 py-2.5 ring-1 ring-inset ring-zinc-200/80 transition focus-within:bg-white focus-within:ring-zinc-400">
+              {isMathsOpen ? (
+                <div className="rounded-[10px] border border-zinc-200 bg-white p-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {MATH_SHORTCUTS.map((shortcut) => (
+                      <MathShortcutButton
+                        key={shortcut.label}
+                        shortcut={shortcut}
+                        onClick={() => insertShortcut(shortcut)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex items-end gap-1.5">
+                <textarea
+                  ref={composerRef}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={2}
+                  placeholder="Ask Arthur anything."
+                  aria-label="Ask Arthur anything"
+                  className="max-h-28 min-h-[52px] flex-1 resize-none bg-transparent px-0.5 pt-1 text-sm leading-5 text-zinc-800 placeholder:text-zinc-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsMathsOpen((current) => !current)}
+                  className={[
+                    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border transition",
+                    isMathsOpen
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100",
+                  ].join(" ")}
+                  aria-expanded={isMathsOpen}
+                  aria-label="Toggle maths symbols"
+                >
+                  <MathsIcon className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void sendMessage();
+                  }}
+                  disabled={!draft.trim() || isSending}
+                  aria-label="Send message"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-zinc-900 text-white shadow-[0_6px_16px_rgba(9,9,11,0.16)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
+                >
+                  <ArrowUpIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             {errorMessage ? (
               <p className="mt-2 px-1 text-xs text-rose-600">{errorMessage}</p>
@@ -302,6 +406,49 @@ function DrawerContent({
         </div>
       </div>
     </div>
+  );
+}
+
+function MathShortcutButton({
+  shortcut,
+  onClick,
+}: {
+  shortcut: MathShortcut;
+  onClick: () => void;
+}) {
+  const html = useMemo(() => {
+    if (!shortcut.latexLabel) return null;
+
+    try {
+      return katex.renderToString(shortcut.latexLabel, {
+        displayMode: false,
+        throwOnError: false,
+        strict: "ignore",
+      });
+    } catch {
+      return null;
+    }
+  }, [shortcut.latexLabel]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "inline-flex h-8 min-w-[46px] items-center justify-center rounded-[10px] border border-zinc-200/90 bg-[var(--surface-sidebar)] px-3 text-[12.5px] font-normal text-zinc-600 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-zinc-300 hover:bg-white hover:text-zinc-700",
+        shortcut.className ?? "",
+      ].join(" ")}
+      aria-label={shortcut.ariaLabel}
+    >
+      {html ? (
+        <span
+          className="math-shortcut-label inline-flex items-center justify-center"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      ) : (
+        shortcut.label
+      )}
+    </button>
   );
 }
 
@@ -321,6 +468,23 @@ function RenderedAssistantMessage({ content }: { content: string }) {
           </p>
         ),
       )}
+    </div>
+  );
+}
+
+function RenderedUserMessage({ content }: { content: string }) {
+  const paragraphs = content
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-2.5 text-[14px] leading-[1.7]">
+      {paragraphs.map((paragraph, index) => (
+        <p key={`user-paragraph-${index}`} className="whitespace-pre-wrap break-words text-white">
+          {renderInlineSegments(paragraph.replace(/\n/g, " "), `user-paragraph-${index}`)}
+        </p>
+      ))}
     </div>
   );
 }

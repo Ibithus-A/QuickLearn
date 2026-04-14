@@ -67,6 +67,70 @@ body {
   background: rgba(24, 24, 27, 0.24);
 }
 
+.pdf-viewport {
+  position: relative;
+  height: 720px;
+  overflow: hidden;
+  background: white;
+}
+
+.pdf-object {
+  display: block;
+  width: calc(100% + 34px);
+  height: 744px;
+  margin-top: -8px;
+  margin-right: -34px;
+  margin-bottom: -16px;
+  margin-left: -8px;
+  border: 0;
+}
+
+.pdf-mask {
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  background: white;
+}
+
+.pdf-mask-top-left,
+.pdf-mask-top-right,
+.pdf-mask-bottom-left,
+.pdf-mask-bottom-right {
+  width: 22px;
+  height: 22px;
+}
+
+.pdf-mask-top-left {
+  top: 0;
+  left: 0;
+  border-bottom-right-radius: 22px;
+}
+
+.pdf-mask-top-right {
+  top: 0;
+  right: 0;
+  border-bottom-left-radius: 22px;
+}
+
+.pdf-mask-bottom-left {
+  bottom: 0;
+  left: 0;
+  border-top-right-radius: 22px;
+}
+
+.pdf-mask-bottom-right {
+  right: 0;
+  bottom: 0;
+  border-top-left-radius: 22px;
+}
+
+.pdf-mask-right-edge {
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 100%;
+}
+
 .notion-editor {
   font-family:
     "Avenir Next",
@@ -88,6 +152,53 @@ textarea {
     border-color 120ms ease,
     box-shadow 150ms ease,
     color 110ms ease;
+}
+
+.landing-intro,
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.985);
+  filter: blur(10px);
+  will-change: opacity, transform, filter;
+}
+
+.landing-intro {
+  transition:
+    opacity 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-intro-delay-1 {
+  transition-delay: 80ms;
+}
+
+.landing-intro-delay-2 {
+  transition-delay: 180ms;
+}
+
+.scroll-reveal {
+  transition:
+    opacity 1100ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-intro.is-visible,
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-intro,
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
 }
 
 @media (max-width: 767px) {
@@ -225,4 +336,27 @@ textarea {
 .assistant-message code {
   border: 1px solid rgba(228, 228, 231, 0.95);
   background: rgba(255, 255, 255, 0.75);
+}
+
+.user-message .katex,
+.user-message .katex * {
+  color: inherit;
+}
+
+.math-shortcut-label .katex {
+  font-size: 0.98em;
+  color: #52525b;
+}
+
+.math-shortcut-label .katex .mord,
+.math-shortcut-label .katex .mbin,
+.math-shortcut-label .katex .mrel {
+  color: inherit;
+}
+
+.math-shortcut-label .katex .rule,
+.math-shortcut-label .katex .frac-line,
+.math-shortcut-label .katex svg {
+  color: inherit;
+  stroke: currentColor;
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { CloseIcon, FlowLogoIcon } from "@/components/icons";
+import Image from "next/image";
+import { CloseIcon } from "@/components/icons";
 import {
   buildAuthCallbackUrl,
   buildPasswordResetCallbackUrl,
@@ -176,7 +177,15 @@ export function SignInPortal({
 
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16">
         <div className="flex flex-col items-center text-center">
-          <FlowLogoIcon className="h-9 w-9" />
+          <Image
+            src="/assets/excelora-logo.svg"
+            alt="Excelora"
+            width={132}
+            height={36}
+            className="h-9 w-auto select-none"
+            draggable={false}
+            priority
+          />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-900">
             {view === "sign-up"
               ? "Create your Excelora account"

@@ -426,13 +426,19 @@ export function EditorPane({
                       </div>
 
                       <div className="px-4 py-5 md:px-5">
-                        <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(244,244,245,0.92))]">
-                          <object
-                            key={`${selectedNode.id}-${pdfZoom}`}
-                            data={`${resolveSubtopicPdfUrl(selectedNode.title)}#toolbar=0&navpanes=0&view=FitH&zoom=${pdfZoom}`}
-                            type="application/pdf"
-                            className="block h-[720px] w-full bg-white"
-                          >
+                        <div className="overflow-hidden rounded-none bg-white">
+                          <div className="pdf-viewport">
+                            <div aria-hidden className="pdf-mask pdf-mask-top-left" />
+                            <div aria-hidden className="pdf-mask pdf-mask-top-right" />
+                            <div aria-hidden className="pdf-mask pdf-mask-bottom-left" />
+                            <div aria-hidden className="pdf-mask pdf-mask-bottom-right" />
+                            <div aria-hidden className="pdf-mask pdf-mask-right-edge" />
+                            <object
+                              key={`${selectedNode.id}-${pdfZoom}`}
+                              data={`${resolveSubtopicPdfUrl(selectedNode.title)}#toolbar=0&navpanes=0&view=FitH&zoom=${pdfZoom}`}
+                              type="application/pdf"
+                              className="pdf-object bg-white"
+                            >
                             <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-6 text-center">
                               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-zinc-200 bg-white shadow-sm">
                                 <span className="text-xl font-semibold text-zinc-700">PDF</span>
@@ -446,7 +452,8 @@ export function EditorPane({
                                 </p>
                               </div>
                             </div>
-                          </object>
+                            </object>
+                          </div>
                         </div>
 
                         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -495,13 +502,19 @@ export function EditorPane({
 
                     <div className="px-4 py-5 md:px-5">
                       {isAssessmentPage ? (
-                        <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(244,244,245,0.92))]">
-                          <object
-                            key={`${selectedNode.id}-${pdfZoom}`}
-                            data={`${resolveAssessmentPdfUrl(lessonContext.chapterTitle)}#toolbar=0&navpanes=0&view=FitH&zoom=${pdfZoom}`}
-                            type="application/pdf"
-                            className="block h-[720px] w-full bg-white"
-                          >
+                        <div className="overflow-hidden rounded-none bg-white">
+                          <div className="pdf-viewport">
+                            <div aria-hidden className="pdf-mask pdf-mask-top-left" />
+                            <div aria-hidden className="pdf-mask pdf-mask-top-right" />
+                            <div aria-hidden className="pdf-mask pdf-mask-bottom-left" />
+                            <div aria-hidden className="pdf-mask pdf-mask-bottom-right" />
+                            <div aria-hidden className="pdf-mask pdf-mask-right-edge" />
+                            <object
+                              key={`${selectedNode.id}-${pdfZoom}`}
+                              data={`${resolveAssessmentPdfUrl(lessonContext.chapterTitle)}#toolbar=0&navpanes=0&view=FitH&zoom=${pdfZoom}`}
+                              type="application/pdf"
+                              className="pdf-object bg-white"
+                            >
                             <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-6 text-center">
                               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-zinc-200 bg-white shadow-sm">
                                 <span className="text-xl font-semibold text-zinc-700">PDF</span>
@@ -515,7 +528,8 @@ export function EditorPane({
                                 </p>
                               </div>
                             </div>
-                          </object>
+                            </object>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex aspect-video items-center justify-center rounded-[24px] border border-dashed border-zinc-300 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(244,244,245,0.92))]">
