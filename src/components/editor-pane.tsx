@@ -16,7 +16,7 @@ import {
 } from "@/lib/tree-utils";
 import type { UserAccessProfile } from "@/types/auth";
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type EditorPaneProps = {
   role: "tutor" | "student";
@@ -70,6 +70,40 @@ const DEFAULT_LOCK_INFO = {
   isLockedByAncestorPage: false,
   canToggleLock: false,
 };
+
+function buildWorkspaceContext(state: ReturnType<typeof useFlowState>["state"], selectedId: string | null) {
+  const lines: string[] = [];
+
+  const appendNode = (nodeId: string, depth: number) => {
+    const node = state.nodes[nodeId];
+    if (!node) return;
+
+    const indent = "  ".repeat(depth);
+    const isSelected = node.id === selectedId ? " [current]" : "";
+
+    if (node.kind === "folder") {
+      lines.push(`${indent}Folder: ${node.title}${isSelected}`);
+      for (const childId of node.childrenIds) {
+        appendNode(childId, depth + 1);
+      }
+      return;
+    }
+
+    const trimmedContent = node.content.trim();
+    const normalizedContent = trimmedContent
+      .replace(/\s+/g, " ")
+      .slice(0, 600);
+    const contentLabel = normalizedContent ? ` — ${normalizedContent}` : "";
+
+    lines.push(`${indent}Page: ${node.title}${isSelected}${contentLabel}`);
+  };
+
+  for (const rootId of state.rootIds) {
+    appendNode(rootId, 0);
+  }
+
+  return lines.join("\n");
+}
 
 export function EditorPane({
   role,
@@ -143,6 +177,10 @@ export function EditorPane({
     !selectedNode.content.trim().toLowerCase().includes(LEGACY_PLACEHOLDER_CONTENT)
       ? selectedNode.content.trim()
       : "";
+  const workspaceContext = useMemo(
+    () => buildWorkspaceContext(state, selectedId),
+    [selectedId, state],
+  );
   const editorShellStyle = {
     paddingLeft: sidebarInsetPx > 0 ? `min(${sidebarInsetPx}px, 88vw)` : undefined,
     paddingRight: isAssistantHovered ? "min(390px, 42vw)" : undefined,
@@ -641,6 +679,7 @@ export function EditorPane({
           pageTitle={selectedNode.title}
           pageContent={visiblePageContent}
           pageNodeId={selectedNode.id}
+          workspaceContext={workspaceContext}
           onHoverChange={setIsAssistantHovered}
           isMobileOpen={isMobileAssistantOpen}
           onMobileOpenChange={(isOpen) => {

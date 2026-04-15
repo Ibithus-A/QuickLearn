@@ -9,6 +9,7 @@ type AssistantMessage = {
 type ArthurRequestBody = {
   pageTitle?: string;
   pageContent?: string;
+  workspaceContext?: string;
   messages?: AssistantMessage[];
 };
 
@@ -16,11 +17,14 @@ const COHERE_API_URL = "https://api.cohere.com/v2/chat";
 const ARTHUR_SYSTEM_PROMPT = `
 You are Arthur, a friendly AI study assistant inside the Excelora workspace.
 Be concise, accurate, and encouraging.
-Use the provided page title, page content, and lesson notes (extracted from the subtopic PDF) as the primary context when answering.
-Treat the lesson notes as the authoritative source for this subtopic — quote, paraphrase, and reason from them directly when answering questions.
-If the page content and lesson notes are both sparse or missing, say that you are working from limited context.
+Use the provided current page, lesson notes, workspace context, and user messages together.
+Treat the current page and lesson notes as high-value context, but not as a hard limit.
+When the current page or extracted PDF notes are incomplete, ambiguous, or insufficient, use the wider workspace context and your general reasoning to answer correctly.
+Prefer the most reliable answer over a narrowly grounded but wrong answer.
+If the available workspace material is genuinely incomplete and the answer depends on missing specifics, say what is uncertain instead of guessing.
 Prefer helpful study actions like explanation, recap, quizzes, worked examples, and revision support.
-Do not claim to see anything outside the provided page context, lesson notes, and user messages.
+Do not claim to see hidden tools, browse the web, or access materials that were not provided in the workspace context or user messages.
+You may still use your general subject knowledge to explain maths accurately when the local materials are not enough.
 Format answers so they are easy to scan in a narrow chat panel:
 - Use short paragraphs with natural prose.
 - Avoid Markdown markers such as #, -, *, or numbered list formatting in the final answer.
@@ -44,6 +48,7 @@ export async function POST(request: Request) {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const pageTitle = body.pageTitle?.trim() ?? "Untitled page";
     const pageContent = body.pageContent?.trim() ?? "";
+    const workspaceContext = body.workspaceContext?.trim() ?? "";
     const latestUserMessage = messages[messages.length - 1];
 
     let lessonNotes = "";
@@ -82,7 +87,7 @@ export async function POST(request: Request) {
             content: [
               {
                 type: "text",
-                text: `${ARTHUR_SYSTEM_PROMPT}\n\nPage title: ${pageTitle}\n\nPage content:\n${pageContent || "(blank page)"}\n\nLesson notes (extracted from the subtopic PDF):\n${lessonNotes || "(no PDF notes available for this subtopic yet)"}`,
+                text: `${ARTHUR_SYSTEM_PROMPT}\n\nCurrent page title: ${pageTitle}\n\nCurrent page content:\n${pageContent || "(blank page)"}\n\nLesson notes (extracted from the subtopic PDF):\n${lessonNotes || "(no PDF notes available for this subtopic yet)"}\n\nWorkspace context:\n${workspaceContext || "(no additional workspace context provided)"}`,
               },
             ],
           },
