@@ -15,6 +15,7 @@ html,
 body {
   height: 100%;
   width: 100%;
+  scrollbar-width: none;
 }
 
 body {
@@ -35,6 +36,11 @@ body {
   overflow-x: hidden;
 }
 
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 ::selection {
   background: rgba(24, 119, 242, 0.14);
 }
@@ -49,27 +55,22 @@ body {
 }
 
 .scroll-slim {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(24, 24, 27, 0.16) transparent;
+  scrollbar-width: none;
 }
 
 .scroll-slim::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.scroll-slim::-webkit-scrollbar-thumb {
-  background: rgba(24, 24, 27, 0.16);
-  border-radius: 999px;
-}
-
-.scroll-slim::-webkit-scrollbar-thumb:hover {
-  background: rgba(24, 24, 27, 0.24);
+  display: none;
 }
 
 .pdf-canvas-shell {
   min-height: 720px;
   background: white;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pdf-canvas-shell::-webkit-scrollbar {
+  display: none;
 }
 
 .pdf-loading-state,
@@ -77,6 +78,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: max-content;
+  min-width: 100%;
+  align-items: center;
 }
 
 .pdf-loading-state {
@@ -85,7 +89,8 @@ body {
 
 .pdf-canvas-page {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: none;
   height: auto;
   background: white;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
@@ -303,7 +308,7 @@ textarea {
 
 .assistant-message .katex-display::-webkit-scrollbar,
 .assistant-message .katex::-webkit-scrollbar {
-  height: 6px;
+  height: 0;
 }
 
 .assistant-message .katex-display::-webkit-scrollbar-thumb,

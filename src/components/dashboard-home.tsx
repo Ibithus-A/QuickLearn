@@ -8,6 +8,7 @@ import {
   UnlockIcon,
 } from "@/components/icons";
 import { CHAPTER_ONE_TITLE } from "@/lib/access";
+import { A_LEVEL_MATHS_SUBJECTS } from "@/lib/seed";
 import type { UserAccessProfile, UserPlan, UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
 import { useMemo, useState } from "react";
@@ -63,6 +64,9 @@ export function DashboardHome({
     null,
   );
   const [deleteError, setDeleteError] = useState("");
+  const [activeSubjectTitle, setActiveSubjectTitle] = useState(
+    A_LEVEL_MATHS_SUBJECTS[0]?.title ?? "",
+  );
 
   const visibleStudents = useMemo(() => {
     const query = studentSearch.trim().toLowerCase();
@@ -76,6 +80,27 @@ export function DashboardHome({
 
   const isDeleteConfirming =
     !!selectedStudent && deleteConfirmationStudentId === selectedStudent.id;
+  const chapterTitleSet = useMemo(() => new Set(chapterTitles), [chapterTitles]);
+  const subjectChapterGroups = useMemo(
+    () =>
+      A_LEVEL_MATHS_SUBJECTS.map((subject) => ({
+        title: subject.title,
+        chapterTitles: subject.chapters
+          .map((chapter) => chapter.title)
+          .filter((chapterTitle) => chapterTitleSet.has(chapterTitle)),
+      })).filter((subject) => subject.chapterTitles.length > 0),
+    [chapterTitleSet],
+  );
+  const activeSubject =
+    subjectChapterGroups.find((subject) => subject.title === activeSubjectTitle) ??
+    subjectChapterGroups[0] ??
+    null;
+  const activeSubjectUnlockedCount = activeSubject
+    ? activeSubject.chapterTitles.filter(
+        (chapterTitle) =>
+          chapterTitle === CHAPTER_ONE_TITLE || accessibleChapterTitles.includes(chapterTitle),
+      ).length
+    : 0;
 
   const handleDeleteStudent = async () => {
     if (!selectedStudent || !onDeleteStudent || isDeletingStudent) return;
@@ -356,13 +381,13 @@ export function DashboardHome({
               ) : null}
             </div>
 
-            <div className="mt-8 flex items-end justify-between border-b border-zinc-200 pb-3">
+            <div className="mt-8 flex flex-wrap items-end justify-between gap-3 border-b border-zinc-200 pb-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
                   Chapter Access
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Tag the current chapter or toggle locks for any subtopic.
+                  Tag the current chapter or toggle locks within each subject.
                 </p>
               </div>
               <p className="text-xs font-medium text-zinc-600">
@@ -371,8 +396,56 @@ export function DashboardHome({
               </p>
             </div>
 
+            {subjectChapterGroups.length > 1 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {subjectChapterGroups.map((subject) => {
+                  const isActive = activeSubject?.title === subject.title;
+                  const unlockedCount = subject.chapterTitles.filter(
+                    (chapterTitle) =>
+                      chapterTitle === CHAPTER_ONE_TITLE ||
+                      accessibleChapterTitles.includes(chapterTitle),
+                  ).length;
+
+                  return (
+                    <button
+                      key={subject.title}
+                      type="button"
+                      onClick={() => setActiveSubjectTitle(subject.title)}
+                      aria-pressed={isActive}
+                      className={[
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                        isActive
+                          ? "border-zinc-900 bg-zinc-900 text-white"
+                          : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900",
+                      ].join(" ")}
+                    >
+                      <span>{subject.title}</span>
+                      <span
+                        className={[
+                          "rounded-full px-1.5 py-0.5 text-[10px]",
+                          isActive ? "bg-white/15 text-white" : "bg-zinc-100 text-zinc-500",
+                        ].join(" ")}
+                      >
+                        {unlockedCount}/{subject.chapterTitles.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {activeSubject ? (
+              <div className="mt-4 flex items-center justify-between gap-3 text-xs text-zinc-500">
+                <span>{activeSubject.title}</span>
+                <span>
+                  {activeSubjectUnlockedCount} of {activeSubject.chapterTitles.length} chapters
+                  unlocked
+                </span>
+              </div>
+            ) : null}
+
             <div className="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-2">
-              {chapterTitles.map((chapterTitle) => {
+              {(activeSubject?.chapterTitles ?? chapterTitles).map((chapterTitle) => {
                 const isAlwaysUnlocked = chapterTitle === CHAPTER_ONE_TITLE;
                 const isUnlocked =
                   isAlwaysUnlocked || accessibleChapterTitles.includes(chapterTitle);

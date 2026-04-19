@@ -137,11 +137,144 @@ export const A_LEVEL_MATHS_SUBJECTS: SubjectDef[] = [
   },
   {
     title: MECHANICS_TITLE,
-    chapters: [],
+    chapters: [
+      {
+        title: "Chapter 1: Modelling in Mechanics",
+        subtopics: ["1.1 Modelling Assumptions", "1.2 Vectors in Mechanics"],
+      },
+      {
+        title: "Chapter 2: Constant Acceleration",
+        subtopics: [
+          "2.1 Velocity-Time Graphs",
+          "2.2 The SUVAT Equations",
+          "2.3 Vertical Motion Under Gravity",
+        ],
+      },
+      {
+        title: "Chapter 3: Forces and Motion",
+        subtopics: [
+          "3.1 Newton's Laws and Force Diagrams",
+          "3.2 Connected Particles and Pulleys",
+          "3.3 Inclined Planes",
+        ],
+      },
+      {
+        title: "Chapter 4: Variable Acceleration",
+        subtopics: [
+          "4.1 Calculus for Variable Acceleration",
+          "4.2 Differentiating Position",
+        ],
+      },
+      {
+        title: "Chapter 5: Moments",
+        subtopics: ["5.1 Moments and the Principle of Moments"],
+      },
+      {
+        title: "Chapter 6: Forces and Friction",
+        subtopics: ["6.1 Friction on Inclined Planes"],
+      },
+      {
+        title: "Chapter 7: Projectiles",
+        subtopics: ["7.1 Projectile Motion"],
+      },
+      {
+        title: "Chapter 8: Applications of Forces",
+        subtopics: [
+          "8.1 Forces in Two Dimensions",
+          "8.2 Vector Kinematics with Forces",
+        ],
+      },
+      {
+        title: "Chapter 9: Further Kinematics",
+        subtopics: [
+          "9.1 Vector Kinematics",
+          "9.2 Constant Acceleration in Vector Form",
+        ],
+      },
+    ],
   },
   {
     title: STATISTICS_TITLE,
-    chapters: [],
+    chapters: [
+      {
+        title: "Chapter 1: Data Collection",
+        subtopics: [
+          "1.1 Populations and Samples",
+          "1.2 Sampling Methods",
+          "1.3 Types of Data",
+          "1.4 The Large Data Set",
+        ],
+      },
+      {
+        title: "Chapter 2: Measures of Location and Spread",
+        subtopics: [
+          "2.1 Measures of Central Tendency",
+          "2.2 Quartiles, Percentiles and Measures of Spread",
+          "2.3 Variance and Standard Deviation",
+          "2.4 Coding",
+        ],
+      },
+      {
+        title: "Chapter 3: Representations of Data",
+        subtopics: [
+          "3.1 Outliers",
+          "3.2 Box Plots",
+          "3.3 Cumulative Frequency Diagrams",
+          "3.4 Histograms",
+          "3.5 Comparing Data Sets",
+        ],
+      },
+      {
+        title: "Chapter 4: Correlation",
+        subtopics: ["4.1 Scatter Diagrams and Correlation", "4.2 Regression Lines"],
+      },
+      {
+        title: "Chapter 5: Probability",
+        subtopics: [
+          "5.1 Calculating Probabilities",
+          "5.2 Venn Diagrams",
+          "5.3 Mutually Exclusive and Independent Events",
+          "5.4 Tree Diagrams",
+        ],
+      },
+      {
+        title: "Chapter 6: Statistical Distributions",
+        subtopics: ["6.1 Discrete Random Variables", "6.2 The Binomial Distribution"],
+      },
+      {
+        title: "Chapter 7: Hypothesis Testing",
+        subtopics: ["7.1 The Language of Hypothesis Testing", "7.2 Finding Critical Regions"],
+      },
+      {
+        title: "Chapter 8: Regression, Correlation and Hypothesis Testing",
+        subtopics: [
+          "8.1 Exponential Models",
+          "8.2 Measuring Correlation",
+          "8.3 Hypothesis Testing for Zero Correlation",
+        ],
+      },
+      {
+        title: "Chapter 9: Conditional Probability",
+        subtopics: [
+          "9.1 Set Notation",
+          "9.2 Conditional Probability",
+          "9.3 Conditional Probabilities in Venn Diagrams",
+          "9.4 Probability Formulae",
+        ],
+      },
+      {
+        title: "Chapter 10: The Normal Distribution",
+        subtopics: [
+          "10.1 The Normal Distribution",
+          "10.2 Finding Probabilities for Normal Distributions",
+          "10.3 The Inverse Normal Distribution Function",
+          "10.4 The Standard Normal Distribution",
+          "10.5 Finding Mu and Sigma",
+          "10.6 Approximating the Binomial Distribution",
+          "10.7 Hypothesis Testing with the Normal Distribution",
+        ],
+      },
+    ],
   },
 ];
 

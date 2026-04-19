@@ -42,8 +42,13 @@ const MIN_TITLE_FONT_SIZE_PX = 20;
 const LEGACY_PLACEHOLDER_CONTENT = "use this space for notes and examples";
 const pdfBufferCache = new Map<string, Uint8Array>();
 
-function resolveSubtopicPdfUrl(title: string): string {
-  return `/assets/${encodeURIComponent(title.trim())}.pdf`;
+function resolveSubjectAssetPath(subjectTitle: string | null | undefined, fileTitle: string): string {
+  const subjectPath = subjectTitle ? `${encodeURIComponent(subjectTitle.trim())}/` : "";
+  return `/assets/${subjectPath}${encodeURIComponent(fileTitle.trim())}.pdf`;
+}
+
+function resolveSubtopicPdfUrl(title: string, subjectTitle: string | null | undefined): string {
+  return resolveSubjectAssetPath(subjectTitle, title);
 }
 
 function resolveSubtopicVideoUrl(title: string): string {
@@ -54,16 +59,18 @@ function resolveSubtopicVideoPosterUrl(title: string): string {
   return `/assets/videos/${encodeURIComponent(title.trim())}.jpg`;
 }
 
-function resolveAssessmentPdfUrl(chapterTitle: string): string {
+function resolveAssessmentPdfUrl(
+  chapterTitle: string,
+  subjectTitle: string | null | undefined,
+): string {
   // Chapter titles look like "Chapter 1: Algebra and Functions". We qualify
   // the assessment PDF filename with the chapter number so different chapters
   // don't collide on /assets/Assessment.pdf.
-  return `/assets/${encodeURIComponent(resolveAssessmentPdfTitle(chapterTitle))}.pdf`;
+  return resolveSubjectAssetPath(subjectTitle, resolveAssessmentPdfTitle(chapterTitle));
 }
 
 function resolveAssessmentPdfTitle(chapterTitle: string): string {
-  const match = chapterTitle.match(/chapter\s+(\d+)/i);
-  return match ? `Chapter ${match[1]} Assessment` : `${chapterTitle} Assessment`;
+  return `${chapterTitle.replace(":", " -")} Assessment`;
 }
 
 const DEFAULT_LOCK_INFO = {
@@ -190,7 +197,7 @@ export function EditorPane({
   );
   const editorShellStyle = {
     paddingLeft: sidebarInsetPx > 0 ? `min(${sidebarInsetPx}px, 88vw)` : undefined,
-    paddingRight: isAssistantHovered ? "min(390px, 42vw)" : undefined,
+    paddingRight: isAssistantHovered ? "min(460px, 46vw)" : undefined,
   } satisfies CSSProperties;
 
   const toggleLessonWatched = () => {
@@ -493,7 +500,10 @@ export function EditorPane({
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
                             key={`${selectedNode.id}-${pdfZoom}`}
-                            pdfUrl={resolveSubtopicPdfUrl(selectedNode.title)}
+                            pdfUrl={resolveSubtopicPdfUrl(
+                              selectedNode.title,
+                              lessonContext?.subjectTitle,
+                            )}
                             zoom={pdfZoom}
                             emptyTitle="Notes coming soon"
                             emptyBody="The notes for this subtopic will appear here shortly."
@@ -549,7 +559,10 @@ export function EditorPane({
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
                             key={`${selectedNode.id}-${pdfZoom}`}
-                            pdfUrl={resolveAssessmentPdfUrl(lessonContext.chapterTitle)}
+                            pdfUrl={resolveAssessmentPdfUrl(
+                              lessonContext.chapterTitle,
+                              lessonContext.subjectTitle,
+                            )}
                             zoom={pdfZoom}
                             emptyTitle={`${END_OF_TOPIC_ASSESSMENT_TITLE} coming soon`}
                             emptyBody="The assessment worksheet will appear here shortly."
@@ -715,6 +728,9 @@ function PdfCanvasDocument({
   const [pageImages, setPageImages] = useState<PdfPageImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const panDirectionRef = useRef<"left" | "right" | null>(null);
+  const panVelocityRef = useRef(0);
+  const panFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     setRenderWidth(containerRef.current?.clientWidth ?? 0);
@@ -803,8 +819,80 @@ function PdfCanvasDocument({
     };
   }, [renderWidth, pdfUrl, zoom]);
 
+  useEffect(() => {
+    return () => {
+      if (panFrameRef.current !== null) {
+        window.cancelAnimationFrame(panFrameRef.current);
+      }
+    };
+  }, []);
+
+  const stopEdgePan = () => {
+    panDirectionRef.current = null;
+    panVelocityRef.current = 0;
+    if (panFrameRef.current !== null) {
+      window.cancelAnimationFrame(panFrameRef.current);
+      panFrameRef.current = null;
+    }
+  };
+
+  const startEdgePan = (direction: "left" | "right", velocity: number) => {
+    const container = containerRef.current;
+    if (!container || container.scrollWidth <= container.clientWidth) return;
+
+    panDirectionRef.current = direction;
+    panVelocityRef.current = velocity;
+    if (panFrameRef.current !== null) return;
+
+    const step = () => {
+      const currentContainer = containerRef.current;
+      const currentDirection = panDirectionRef.current;
+      if (!currentContainer || !currentDirection) {
+        panFrameRef.current = null;
+        return;
+      }
+
+      currentContainer.scrollLeft +=
+        (currentDirection === "right" ? 1 : -1) * panVelocityRef.current;
+      panFrameRef.current = window.requestAnimationFrame(step);
+    };
+
+    panFrameRef.current = window.requestAnimationFrame(step);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container || container.scrollWidth <= container.clientWidth) {
+      stopEdgePan();
+      return;
+    }
+
+    const bounds = container.getBoundingClientRect();
+    const edgeSize = Math.min(160, bounds.width * 0.22);
+    const x = event.clientX - bounds.left;
+
+    if (x >= bounds.width - edgeSize) {
+      const intensity = (x - (bounds.width - edgeSize)) / edgeSize;
+      startEdgePan("right", 2 + intensity * 14);
+      return;
+    }
+
+    if (x <= edgeSize) {
+      const intensity = (edgeSize - x) / edgeSize;
+      startEdgePan("left", 2 + intensity * 14);
+      return;
+    }
+
+    stopEdgePan();
+  };
+
   return (
-    <div ref={containerRef} className="pdf-canvas-shell">
+    <div
+      ref={containerRef}
+      className="pdf-canvas-shell"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={stopEdgePan}
+    >
       {isLoading ? (
         <div className="pdf-loading-state">
           <div className="loading-skeleton h-12 w-40 rounded-xl" />

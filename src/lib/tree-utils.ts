@@ -425,6 +425,7 @@ export function getDescendantCount(state: FlowState, id: string): number {
 type LessonChapterContext = {
   chapterId: string;
   chapterTitle: string;
+  subjectTitle: string | null;
   lessonIds: string[];
   assessmentId: string | null;
   isAssessmentPage: boolean;
@@ -493,6 +494,10 @@ export function getLessonChapterContext(
 
   const chapterNode = getChapterNode(state, id);
   if (!chapterNode) return null;
+  const subjectNode =
+    chapterNode.parentId && state.nodes[chapterNode.parentId]?.kind === "folder"
+      ? state.nodes[chapterNode.parentId]
+      : null;
 
   const lessonIds: string[] = [];
   collectDescendantPageIds(state, chapterNode.id, lessonIds);
@@ -507,6 +512,7 @@ export function getLessonChapterContext(
   return {
     chapterId: chapterNode.id,
     chapterTitle: chapterNode.title,
+    subjectTitle: subjectNode?.title ?? null,
     lessonIds,
     assessmentId,
     isAssessmentPage,

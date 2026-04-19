@@ -1,0 +1,766 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R] /Count 6 >>
+endobj
+4 0 obj
+<< /Length 2844 >>
+stream
+BT
+/F2 18 Tf
+1 0 0 1 54 738 Tm
+(Excelora Product Roadmap Audit) Tj
+/F1 10 Tf
+1 0 0 1 54 714 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 700 Tm
+(Generated from the product review conversation on April 17, 2026.) Tj
+/F1 10 Tf
+1 0 0 1 54 682 Tm
+() Tj
+/F2 14 Tf
+1 0 0 1 54 660 Tm
+(Current Product Issues) Tj
+/F1 10 Tf
+1 0 0 1 54 638 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 619 Tm
+(1. Arthur chats are not persisted) Tj
+/F1 10 Tf
+1 0 0 1 54 600 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 586 Tm
+(Arthur works per session, but conversations disappear when the page changes, refreshes,) Tj
+/F1 10 Tf
+1 0 0 1 54 572 Tm
+(or the assistant resets. This means students cannot review previous help, tutors cannot) Tj
+/F1 10 Tf
+1 0 0 1 54 558 Tm
+(inspect student misconceptions, and Arthur cannot build continuity across a topic.) Tj
+/F1 10 Tf
+1 0 0 1 54 540 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 526 Tm
+(Status: intentional for now. Address later when cloud persistence is affordable.) Tj
+/F1 10 Tf
+1 0 0 1 54 508 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 489 Tm
+(2. Student progress tracking is too shallow) Tj
+/F1 10 Tf
+1 0 0 1 54 470 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 456 Tm
+(Progress is mostly chapter/subtopic access and local watched/completed state. It does) Tj
+/F1 10 Tf
+1 0 0 1 54 442 Tm
+(not properly track question attempts, assessment results, time spent, repeated mistakes,) Tj
+/F1 10 Tf
+1 0 0 1 54 428 Tm
+(confidence, Arthur usage, cross-device completion, or tutor-visible learning history.) Tj
+/F1 10 Tf
+1 0 0 1 54 410 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 396 Tm
+(Status: UI can be added locally for now, but durable dynamic tracking needs cloud) Tj
+/F1 10 Tf
+1 0 0 1 54 382 Tm
+(storage.) Tj
+/F1 10 Tf
+1 0 0 1 54 364 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 345 Tm
+(3. No real assessment workflow) Tj
+/F1 10 Tf
+1 0 0 1 54 326 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 312 Tm
+(Students can view assessment PDFs, but there is no structured answering, marking, score) Tj
+/F1 10 Tf
+1 0 0 1 54 298 Tm
+(capture, attempt history, or tutor feedback loop.) Tj
+/F1 10 Tf
+1 0 0 1 54 280 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 266 Tm
+(Status: same as progress tracking. UI can be prototyped locally; real attempts need) Tj
+/F1 10 Tf
+1 0 0 1 54 252 Tm
+(persistence.) Tj
+/F1 10 Tf
+1 0 0 1 54 234 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 215 Tm
+(4. Arthur is not assessment-aware enough) Tj
+/F1 10 Tf
+1 0 0 1 54 196 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 182 Tm
+(Arthur should know whether it should explain, hint, mark, avoid giving a full solution) Tj
+/F1 10 Tf
+1 0 0 1 54 168 Tm
+(immediately, or generate similar practice questions.) Tj
+/F1 10 Tf
+1 0 0 1 54 150 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 136 Tm
+(Status: work on this together. Candidate approach: add a Markdown instruction file that) Tj
+/F1 10 Tf
+1 0 0 1 54 122 Tm
+(defines Arthur's behaviour by context.) Tj
+/F1 10 Tf
+1 0 0 1 54 104 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 85 Tm
+(5. Math input is still not a true editor) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 2901 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 54 738 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 724 Tm
+(The custom math builder has improved, but complex nested expressions and editing) Tj
+/F1 10 Tf
+1 0 0 1 54 710 Tm
+(inserted maths remain fragile compared with a mature math editor.) Tj
+/F1 10 Tf
+1 0 0 1 54 692 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 678 Tm
+(Status: priority item. Continue fixing the math input editor thoroughly.) Tj
+/F1 10 Tf
+1 0 0 1 54 660 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 641 Tm
+(6. No durable user data model) Tj
+/F1 10 Tf
+1 0 0 1 54 622 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 608 Tm
+(Without cloud persistence, there is no proper source of truth for students, tutors,) Tj
+/F1 10 Tf
+1 0 0 1 54 594 Tm
+(plans/access, lesson progress, assessment attempts, Arthur chats, analytics, or saved) Tj
+/F1 10 Tf
+1 0 0 1 54 580 Tm
+(notes.) Tj
+/F1 10 Tf
+1 0 0 1 54 562 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 548 Tm
+(Status: user says this has already been addressed.) Tj
+/F1 10 Tf
+1 0 0 1 54 530 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 511 Tm
+(7. Tutor dashboard is not operational enough) Tj
+/F1 10 Tf
+1 0 0 1 54 492 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 478 Tm
+(The dashboard can show students and access, but should become the tutor command centre:) Tj
+/F1 10 Tf
+1 0 0 1 54 464 Tm
+(progress summaries, assessment scores, recent activity, weak topics, Arthur questions,) Tj
+/F1 10 Tf
+1 0 0 1 54 450 Tm
+(inactivity, and recommended tutor actions.) Tj
+/F1 10 Tf
+1 0 0 1 54 432 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 418 Tm
+(Status: no cloud makes this difficult. Work on what can be done locally or UI-first.) Tj
+/F1 10 Tf
+1 0 0 1 54 400 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 381 Tm
+(8. PDF-first course content limits interactivity) Tj
+/F1 10 Tf
+1 0 0 1 54 362 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 348 Tm
+(PDFs are quick to ship, but limit tracking and personalization. It is hard to know where) Tj
+/F1 10 Tf
+1 0 0 1 54 334 Tm
+(a student paused, which worked example confused them, or what step they understood.) Tj
+/F1 10 Tf
+1 0 0 1 54 316 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 302 Tm
+(Status: intentional for now.) Tj
+/F1 10 Tf
+1 0 0 1 54 284 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 265 Tm
+(9. Mobile and narrow-panel experiences need polish) Tj
+/F1 10 Tf
+1 0 0 1 54 246 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 232 Tm
+(Arthur, PDF viewing, math input, and assessment workflows are constrained on smaller) Tj
+/F1 10 Tf
+1 0 0 1 54 218 Tm
+(screens.) Tj
+/F1 10 Tf
+1 0 0 1 54 200 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 186 Tm
+(Status: fix thoroughly, even though phone use is not a primary target.) Tj
+/F1 10 Tf
+1 0 0 1 54 168 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 149 Tm
+(10. No analytics or observability) Tj
+/F1 10 Tf
+1 0 0 1 54 130 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 116 Tm
+(The product needs visibility into drop-off, common Arthur questions, assessment) Tj
+/F1 10 Tf
+1 0 0 1 54 102 Tm
+(difficulty, UI failures, PDF loading issues, and AI call errors.) Tj
+/F1 10 Tf
+1 0 0 1 54 84 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 70 Tm
+(Status: later feature.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 3180 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 54 738 Tm
+() Tj
+/F2 14 Tf
+1 0 0 1 54 716 Tm
+(Recommended Plan) Tj
+/F1 10 Tf
+1 0 0 1 54 694 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 675 Tm
+(Phase 1: Stabilise the core product) Tj
+/F1 10 Tf
+1 0 0 1 54 656 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 642 Tm
+(Define the backend schema when cloud access is available. Minimum tables should include) Tj
+/F1 10 Tf
+1 0 0 1 54 628 Tm
+(profiles, students, tutor-student links, chapter access, lesson progress, assessment) Tj
+/F1 10 Tf
+1 0 0 1 54 614 Tm
+(attempts, assessment answers, Arthur chats, Arthur messages, student notes, and activity) Tj
+/F1 10 Tf
+1 0 0 1 54 600 Tm
+(events.) Tj
+/F1 10 Tf
+1 0 0 1 54 582 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 568 Tm
+(Move progress out of local storage when possible. Keep local storage as a fallback only.) Tj
+/F1 10 Tf
+1 0 0 1 54 550 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 536 Tm
+(Persist Arthur chats once storage exists. Each page, lesson, and assessment should have) Tj
+/F1 10 Tf
+1 0 0 1 54 522 Tm
+(a thread per student.) Tj
+/F1 10 Tf
+1 0 0 1 54 504 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 490 Tm
+(Add clear error/loading states for Arthur, including failed API calls, missing PDF) Tj
+/F1 10 Tf
+1 0 0 1 54 476 Tm
+(context, assessment PDF not found, no saved chat available, and offline/local-only mode.) Tj
+/F1 10 Tf
+1 0 0 1 54 458 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 439 Tm
+(Phase 2: Make assessments real) Tj
+/F1 10 Tf
+1 0 0 1 54 420 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 406 Tm
+(Create a structured assessment workspace with question list, answer input per question,) Tj
+/F1 10 Tf
+1 0 0 1 54 392 Tm
+(working area, submit button, saved draft answers, optional timer, and completion state.) Tj
+/F1 10 Tf
+1 0 0 1 54 374 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 360 Tm
+(Store assessment attempts with student ID, chapter ID, answers, score, feedback,) Tj
+/F1 10 Tf
+1 0 0 1 54 346 Tm
+(timestamp, and attempt number.) Tj
+/F1 10 Tf
+1 0 0 1 54 328 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 314 Tm
+(Give Arthur assessment modes: Hint mode, Explain mode, Mark mode, and Practice mode.) Tj
+/F1 10 Tf
+1 0 0 1 54 300 Tm
+(Assessments should default to hint-first rather than full-solution-first.) Tj
+/F1 10 Tf
+1 0 0 1 54 282 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 268 Tm
+(Build a tutor marking workflow for submitted assessments, unmarked work, score history,) Tj
+/F1 10 Tf
+1 0 0 1 54 254 Tm
+(weak questions, feedback, and resubmission status.) Tj
+/F1 10 Tf
+1 0 0 1 54 236 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 217 Tm
+(Phase 3: Improve learning intelligence) Tj
+/F1 10 Tf
+1 0 0 1 54 198 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 184 Tm
+(Track skill mastery for topics such as sequences, differentiation, integration, trig) Tj
+/F1 10 Tf
+1 0 0 1 54 170 Tm
+(equations, proof, vectors, logs, and exponentials.) Tj
+/F1 10 Tf
+1 0 0 1 54 152 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 138 Tm
+(Have Arthur tag misconceptions such as algebra slips, chain rule errors, notation) Tj
+/F1 10 Tf
+1 0 0 1 54 124 Tm
+(confusion, exam technique issues, and arithmetic errors.) Tj
+/F1 10 Tf
+1 0 0 1 54 106 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 92 Tm
+(Build a student dashboard showing current chapter, completed lessons, assessment scores,) Tj
+/F1 10 Tf
+1 0 0 1 54 78 Tm
+(weak areas, recommended next lesson, and Arthur chat history.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2608 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 54 738 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 724 Tm
+(Build a tutor dashboard v2 showing progress heatmaps, chapter access, latest activity,) Tj
+/F1 10 Tf
+1 0 0 1 54 710 Tm
+(assessment results, Arthur question history, and recommended interventions.) Tj
+/F1 10 Tf
+1 0 0 1 54 692 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 673 Tm
+(Phase 4: Upgrade math input) Tj
+/F1 10 Tf
+1 0 0 1 54 654 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 640 Tm
+(Decide whether to use a real math editor such as MathLive or continue hardening the) Tj
+/F1 10 Tf
+1 0 0 1 54 626 Tm
+(custom builder.) Tj
+/F1 10 Tf
+1 0 0 1 54 608 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 594 Tm
+(Make inserted math editable. Clicking a math token should reopen the builder with) Tj
+/F1 10 Tf
+1 0 0 1 54 580 Tm
+(existing values.) Tj
+/F1 10 Tf
+1 0 0 1 54 562 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 548 Tm
+(Support nested expressions such as e^\(2x\), sin\(3x + 1\), \(x + 1\)/\(x - 2\), definite) Tj
+/F1 10 Tf
+1 0 0 1 54 534 Tm
+(integrals, and product-rule expressions.) Tj
+/F1 10 Tf
+1 0 0 1 54 516 Tm
+() Tj
+/F2 12 Tf
+1 0 0 1 54 497 Tm
+(Phase 5: Product polish) Tj
+/F1 10 Tf
+1 0 0 1 54 478 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 464 Tm
+(Improve the PDF viewer with smoother zoom, fit-width, fit-page, page navigation, search,) Tj
+/F1 10 Tf
+1 0 0 1 54 450 Tm
+(and eventually annotations.) Tj
+/F1 10 Tf
+1 0 0 1 54 432 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 418 Tm
+(Make Arthur feel consistent with smoother panel transitions, persistent chat, better) Tj
+/F1 10 Tf
+1 0 0 1 54 404 Tm
+(narrow-screen behaviour, context labels, and clear PDF-reading status.) Tj
+/F1 10 Tf
+1 0 0 1 54 386 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 372 Tm
+(Add observability for AI calls, PDF extraction, page load failures, assessment) Tj
+/F1 10 Tf
+1 0 0 1 54 358 Tm
+(submissions, and common Arthur topics.) Tj
+/F1 10 Tf
+1 0 0 1 54 340 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 326 Tm
+(Add admin tools for creating students, resetting passwords/invites, assigning access,) Tj
+/F1 10 Tf
+1 0 0 1 54 312 Tm
+(viewing as tutor, exporting progress, and managing assessment attempts.) Tj
+/F1 10 Tf
+1 0 0 1 54 294 Tm
+() Tj
+/F2 14 Tf
+1 0 0 1 54 272 Tm
+(MVP Backend Schema) Tj
+/F1 10 Tf
+1 0 0 1 54 250 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 233 Tm
+(profiles:) Tj
+/F1 10 Tf
+1 0 0 1 54 218 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 203 Tm
+(- email) Tj
+/F1 10 Tf
+1 0 0 1 54 188 Tm
+(- name) Tj
+/F1 10 Tf
+1 0 0 1 54 173 Tm
+(- role) Tj
+/F1 10 Tf
+1 0 0 1 54 158 Tm
+(- plan) Tj
+/F1 10 Tf
+1 0 0 1 54 143 Tm
+(- created_at) Tj
+/F1 10 Tf
+1 0 0 1 54 128 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 111 Tm
+(student_progress:) Tj
+/F1 10 Tf
+1 0 0 1 54 96 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 81 Tm
+(- student_id) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 1997 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 54 738 Tm
+(- chapter_title) Tj
+/F1 10 Tf
+1 0 0 1 54 723 Tm
+(- lesson_title) Tj
+/F1 10 Tf
+1 0 0 1 54 708 Tm
+(- status) Tj
+/F1 10 Tf
+1 0 0 1 54 693 Tm
+(- completed_at) Tj
+/F1 10 Tf
+1 0 0 1 54 678 Tm
+(- updated_at) Tj
+/F1 10 Tf
+1 0 0 1 54 663 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 646 Tm
+(assessment_attempts:) Tj
+/F1 10 Tf
+1 0 0 1 54 631 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 616 Tm
+(- student_id) Tj
+/F1 10 Tf
+1 0 0 1 54 601 Tm
+(- chapter_title) Tj
+/F1 10 Tf
+1 0 0 1 54 586 Tm
+(- status) Tj
+/F1 10 Tf
+1 0 0 1 54 571 Tm
+(- score) Tj
+/F1 10 Tf
+1 0 0 1 54 556 Tm
+(- submitted_at) Tj
+/F1 10 Tf
+1 0 0 1 54 541 Tm
+(- created_at) Tj
+/F1 10 Tf
+1 0 0 1 54 526 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 509 Tm
+(assessment_answers:) Tj
+/F1 10 Tf
+1 0 0 1 54 494 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 479 Tm
+(- attempt_id) Tj
+/F1 10 Tf
+1 0 0 1 54 464 Tm
+(- question_number) Tj
+/F1 10 Tf
+1 0 0 1 54 449 Tm
+(- answer_text) Tj
+/F1 10 Tf
+1 0 0 1 54 434 Tm
+(- feedback) Tj
+/F1 10 Tf
+1 0 0 1 54 419 Tm
+(- marks_awarded) Tj
+/F1 10 Tf
+1 0 0 1 54 404 Tm
+(- max_marks) Tj
+/F1 10 Tf
+1 0 0 1 54 389 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 372 Tm
+(arthur_threads:) Tj
+/F1 10 Tf
+1 0 0 1 54 357 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 342 Tm
+(- student_id) Tj
+/F1 10 Tf
+1 0 0 1 54 327 Tm
+(- page_node_id) Tj
+/F1 10 Tf
+1 0 0 1 54 312 Tm
+(- page_title) Tj
+/F1 10 Tf
+1 0 0 1 54 297 Tm
+(- pdf_title) Tj
+/F1 10 Tf
+1 0 0 1 54 282 Tm
+(- created_at) Tj
+/F1 10 Tf
+1 0 0 1 54 267 Tm
+(- updated_at) Tj
+/F1 10 Tf
+1 0 0 1 54 252 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 235 Tm
+(arthur_messages:) Tj
+/F1 10 Tf
+1 0 0 1 54 220 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 205 Tm
+(- thread_id) Tj
+/F1 10 Tf
+1 0 0 1 54 190 Tm
+(- role) Tj
+/F1 10 Tf
+1 0 0 1 54 175 Tm
+(- content) Tj
+/F1 10 Tf
+1 0 0 1 54 160 Tm
+(- created_at) Tj
+/F1 10 Tf
+1 0 0 1 54 145 Tm
+() Tj
+/F2 10 Tf
+1 0 0 1 54 128 Tm
+(activity_events:) Tj
+/F1 10 Tf
+1 0 0 1 54 113 Tm
+(- id) Tj
+/F1 10 Tf
+1 0 0 1 54 98 Tm
+(- student_id) Tj
+/F1 10 Tf
+1 0 0 1 54 83 Tm
+(- event_type) Tj
+/F1 10 Tf
+1 0 0 1 54 68 Tm
+(- chapter_title) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 779 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 54 738 Tm
+(- lesson_title) Tj
+/F1 10 Tf
+1 0 0 1 54 723 Tm
+(- metadata) Tj
+/F1 10 Tf
+1 0 0 1 54 708 Tm
+(- created_at) Tj
+/F1 10 Tf
+1 0 0 1 54 693 Tm
+() Tj
+/F2 14 Tf
+1 0 0 1 54 671 Tm
+(Main Product Risk) Tj
+/F1 10 Tf
+1 0 0 1 54 649 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 635 Tm
+(Excelora currently looks like a full learning platform, but some of the most important) Tj
+/F1 10 Tf
+1 0 0 1 54 621 Tm
+(behaviours are still session-based rather than student-history-based.) Tj
+/F1 10 Tf
+1 0 0 1 54 603 Tm
+() Tj
+/F1 10 Tf
+1 0 0 1 54 589 Tm
+(The next major step is persistence plus assessment workflow. Once those are in place,) Tj
+/F1 10 Tf
+1 0 0 1 54 575 Tm
+(Arthur, the dashboard, and progress tracking become much more meaningful.) Tj
+/F1 10 Tf
+1 0 0 1 54 557 Tm
+() Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 17
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000244 00000 n 
+0000003140 00000 n 
+0000003276 00000 n 
+0000006229 00000 n 
+0000006365 00000 n 
+0000009597 00000 n 
+0000009733 00000 n 
+0000012394 00000 n 
+0000012532 00000 n 
+0000014582 00000 n 
+0000014720 00000 n 
+0000015551 00000 n 
+0000015689 00000 n 
+trailer
+<< /Size 17 /Root 16 0 R >>
+startxref
+15739
+%%EOF

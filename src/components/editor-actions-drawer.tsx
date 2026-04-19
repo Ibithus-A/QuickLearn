@@ -268,6 +268,8 @@ export function EditorActionsDrawer({
   onMobileOpenChange,
 }: EditorActionsDrawerProps) {
   const [canUseHoverAssistant, setCanUseHoverAssistant] = useState(false);
+  const [isHoverAssistantOpen, setIsHoverAssistantOpen] = useState(false);
+  const closeHoverAssistantTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -284,15 +286,45 @@ export function EditorActionsDrawer({
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (closeHoverAssistantTimerRef.current) {
+        clearTimeout(closeHoverAssistantTimerRef.current);
+      }
+    };
+  }, []);
+
+  const openHoverAssistant = () => {
+    if (closeHoverAssistantTimerRef.current) {
+      clearTimeout(closeHoverAssistantTimerRef.current);
+      closeHoverAssistantTimerRef.current = null;
+    }
+
+    setIsHoverAssistantOpen(true);
+    onHoverChange?.(true);
+  };
+
+  const closeHoverAssistant = () => {
+    if (closeHoverAssistantTimerRef.current) {
+      clearTimeout(closeHoverAssistantTimerRef.current);
+    }
+
+    closeHoverAssistantTimerRef.current = setTimeout(() => {
+      setIsHoverAssistantOpen(false);
+      onHoverChange?.(false);
+      closeHoverAssistantTimerRef.current = null;
+    }, 90);
+  };
+
   return (
     <>
       {canUseHoverAssistant ? (
         <div
-          onMouseEnter={() => onHoverChange?.(true)}
-          onMouseLeave={() => onHoverChange?.(false)}
+          onMouseEnter={openHoverAssistant}
+          onMouseLeave={closeHoverAssistant}
           className={[
-            "group/assistant pointer-events-none absolute inset-y-0 right-0 z-30 hidden md:block",
-            "w-[min(390px,42vw)]",
+            "pointer-events-none absolute inset-y-0 right-0 z-30 hidden md:block",
+            "w-[min(460px,46vw)]",
           ].join(" ")}
         >
           <div
@@ -303,9 +335,9 @@ export function EditorActionsDrawer({
 
           <aside
             className={[
-              "pointer-events-auto absolute inset-y-0 right-0 h-full min-h-full w-[min(390px,42vw)] overflow-hidden border-l border-zinc-200 bg-[var(--surface-sidebar)]",
-              "translate-x-full opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              "group-hover/assistant:translate-x-0 group-hover/assistant:opacity-100",
+              "pointer-events-auto absolute inset-y-0 right-0 h-full min-h-full w-[min(460px,46vw)] overflow-hidden border-l border-zinc-200 bg-[var(--surface-sidebar)]",
+              "transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              isHoverAssistantOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
             ].join(" ")}
           >
             <DrawerContent
@@ -1568,7 +1600,7 @@ function MathSegment({ segment }: { segment: Extract<MessageSegment, { type: "ma
       className={
         segment.displayMode
           ? "my-3 block max-w-full overflow-x-auto overflow-y-hidden py-1"
-          : "mx-0.5 inline-flex max-w-full overflow-x-auto overflow-y-hidden align-middle py-1"
+          : "mx-0.5 inline align-middle py-1"
       }
       dangerouslySetInnerHTML={{ __html: html }}
     />
