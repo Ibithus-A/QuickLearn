@@ -121,9 +121,9 @@ export function DashboardHome({
   };
 
   return (
-    <main className="min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-[var(--surface-app)] px-3 py-4 md:px-8 md:py-7">
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-        <header className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] px-4 py-4 shadow-sm transition-all duration-200 md:px-7 md:py-5">
+    <main className="min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-[var(--surface-app)] px-3 py-4 sm:px-5 sm:py-5 md:px-8 md:py-7">
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:gap-5">
+        <header className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] px-4 py-4 shadow-sm transition-all duration-200 sm:px-5 md:px-7 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white">

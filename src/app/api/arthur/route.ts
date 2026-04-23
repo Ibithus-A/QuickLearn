@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { readPdfTextForSubtopic } from "@/lib/pdf-text";
+import { createRateLimiter } from "@/lib/security/rate-limit";
+import { createClient } from "@/lib/supabase/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type AssistantMessage = {
   role: "user" | "assistant";
@@ -15,6 +20,14 @@ type ArthurRequestBody = {
 };
 
 const COHERE_API_URL = "https://api.cohere.com/v2/chat";
+const MAX_MESSAGES = 40;
+const MAX_MESSAGE_CHARS = 8000;
+const MAX_CONTEXT_CHARS = 20000;
+
+const enforceArthurRateLimit = createRateLimiter({
+  maxRequests: 60,
+  windowMs: 10 * 60 * 1000,
+});
 const MATH_MODE_PROMPT = `
 Math mode is active for this request.
 Give a shorter, verification-first answer.
@@ -63,13 +76,46 @@ export async function POST(request: Request) {
     );
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const limiterResult = enforceArthurRateLimit(`${user.id}:/api/arthur`);
+  if (!limiterResult.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limiterResult.retryAfterSeconds) },
+      },
+    );
+  }
+
   try {
     const body = (await request.json()) as ArthurRequestBody;
-    const messages = Array.isArray(body.messages) ? body.messages : [];
-    const pageTitle = body.pageTitle?.trim() ?? "Untitled page";
-    const pdfTitle = body.pdfTitle?.trim() || pageTitle;
-    const pageContent = body.pageContent?.trim() ?? "";
-    const workspaceContext = body.workspaceContext?.trim() ?? "";
+    const rawMessages = Array.isArray(body.messages) ? body.messages : [];
+    const messages = rawMessages
+      .slice(-MAX_MESSAGES)
+      .filter(
+        (message) =>
+          message &&
+          (message.role === "user" || message.role === "assistant") &&
+          typeof message.content === "string",
+      )
+      .map((message) => ({
+        role: message.role,
+        content: message.content.slice(0, MAX_MESSAGE_CHARS),
+      }));
+    const pageTitle = body.pageTitle?.trim().slice(0, 500) || "Untitled page";
+    const pdfTitle = body.pdfTitle?.trim().slice(0, 500) || pageTitle;
+    const pageContent = (body.pageContent ?? "").trim().slice(0, MAX_CONTEXT_CHARS);
+    const workspaceContext = (body.workspaceContext ?? "")
+      .trim()
+      .slice(0, MAX_CONTEXT_CHARS);
     const latestUserMessage = messages[messages.length - 1];
 
     let lessonNotes = "";

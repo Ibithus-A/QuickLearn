@@ -63,10 +63,16 @@ body::-webkit-scrollbar {
 }
 
 .pdf-canvas-shell {
-  min-height: 720px;
+  min-height: 480px;
   background: white;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+@media (min-width: 768px) {
+  .pdf-canvas-shell {
+    min-height: 720px;
+  }
 }
 
 .pdf-canvas-shell::-webkit-scrollbar {
@@ -368,6 +374,63 @@ textarea {
 .math-shortcut-label .katex .rule,
 .math-shortcut-label .katex .frac-line,
 .math-shortcut-label .katex svg {
+  color: inherit;
+  stroke: currentColor;
+}
+
+.math-keypad-label .katex {
+  font-size: 1.08em;
+  color: #18181b;
+}
+
+.math-keypad-label .katex .mord,
+.math-keypad-label .katex .mbin,
+.math-keypad-label .katex .mrel,
+.math-keypad-label .katex .mop {
+  color: inherit;
+}
+
+.math-keypad-label .katex .rule,
+.math-keypad-label .katex .frac-line,
+.math-keypad-label .katex svg {
+  color: inherit;
+  stroke: currentColor;
+}
+
+.math-composer {
+  word-break: break-word;
+}
+
+.math-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 2px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  user-select: none;
+  cursor: default;
+  line-height: 1;
+}
+
+.math-chip .katex {
+  font-size: 1em;
+  color: #18181b;
+}
+
+.math-chip .katex .mord,
+.math-chip .katex .mbin,
+.math-chip .katex .mrel,
+.math-chip .katex .mop {
+  color: inherit;
+}
+
+.math-chip .katex .rule,
+.math-chip .katex .frac-line,
+.math-chip .katex svg {
   color: inherit;
   stroke: currentColor;
 }

@@ -167,7 +167,7 @@ export function SignInPortal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
+          className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 sm:left-5 sm:top-5"
           aria-label="Back to home"
         >
           <CloseIcon className="h-3 w-3" />
@@ -175,7 +175,7 @@ export function SignInPortal({
         </button>
       ) : null}
 
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16">
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-14 sm:px-5 sm:py-16">
         <div className="flex flex-col items-center text-center">
           <Image
             src="/assets/excelora-logo.svg"

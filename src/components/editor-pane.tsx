@@ -16,7 +16,14 @@ import {
 } from "@/lib/tree-utils";
 import type { UserAccessProfile } from "@/types/auth";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type EditorPaneProps = {
   role: "tutor" | "student";
@@ -137,6 +144,7 @@ export function EditorPane({
     view: "notes",
     pdfZoom: 100,
   });
+  const pdfRef = useRef<PdfCanvasHandle>(null);
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
   const lockInfo = selectedNode
@@ -257,12 +265,12 @@ export function EditorPane({
 
   if (!selectedNode) {
     return (
-      <section className="flex h-full items-center justify-center bg-[var(--surface-panel)] p-6 md:p-10">
+      <section className="flex h-full items-center justify-center bg-[var(--surface-panel)] p-5 sm:p-6 md:p-10">
         <div className="w-full max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
             Excelora
           </p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-900 md:text-5xl">
+          <h2 className="mt-3 text-[28px] font-semibold tracking-tight text-zinc-900 sm:text-4xl md:text-5xl">
             Start with a new page
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-600 md:text-base">
@@ -276,12 +284,12 @@ export function EditorPane({
 
   if (isAccessBlocked) {
     return (
-      <section className="flex h-full items-center justify-center bg-[var(--surface-panel)] p-6 md:p-10">
-        <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <section className="flex h-full items-center justify-center bg-[var(--surface-panel)] p-5 sm:p-6 md:p-10">
+        <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500">
             Chapter Locked
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900">
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
             You do not have access to this chapter
           </h2>
           <p className="mt-3 text-sm leading-7 text-zinc-600">
@@ -317,7 +325,7 @@ export function EditorPane({
         >
           <header
             className={[
-              "px-4 pt-16 pb-3 md:px-6 md:pt-16",
+              "px-4 pt-14 pb-3 sm:pt-16 md:px-6",
               lockInfo.isEffectivelyLocked ? "opacity-65" : "",
             ].join(" ")}
           >
@@ -430,7 +438,32 @@ export function EditorPane({
                               Read the notes below, or watch the full walkthrough
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const zoom = pdfRef.current?.computeFitToPageZoom();
+                                if (zoom == null) return;
+                                setLessonSurface({
+                                  nodeId: selectedId,
+                                  view: lessonView,
+                                  pdfZoom: zoom,
+                                });
+                              }}
+                              aria-label="Fit page to screen"
+                              title="Fit page to screen"
+                              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/80 px-3 text-[11px] font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-white hover:text-zinc-900"
+                            >
+                              <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                <path
+                                  d="M4 7V5a1 1 0 0 1 1-1h2M16 7V5a1 1 0 0 0-1-1h-2M4 13v2a1 1 0 0 0 1 1h2M16 13v2a1 1 0 0 1-1 1h-2"
+                                  stroke="currentColor"
+                                  strokeWidth="1.6"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              Fit
+                            </button>
                             <div
                               role="group"
                               aria-label="Zoom PDF"
@@ -499,6 +532,7 @@ export function EditorPane({
                       <div className="px-4 py-5 md:px-5">
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
+                            ref={pdfRef}
                             key={`${selectedNode.id}-${pdfZoom}`}
                             pdfUrl={resolveSubtopicPdfUrl(
                               selectedNode.title,
@@ -712,28 +746,89 @@ export function EditorPane({
   );
 }
 
-function PdfCanvasDocument({
-  pdfUrl,
-  zoom,
-  emptyTitle,
-  emptyBody,
-}: {
+type PdfCanvasHandle = {
+  computeFitToPageZoom: () => number | null;
+};
+
+type PdfCanvasDocumentProps = {
   pdfUrl: string;
   zoom: number;
   emptyTitle: string;
   emptyBody: string;
-}) {
+};
+
+const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(function PdfCanvasDocument(
+  { pdfUrl, zoom, emptyTitle, emptyBody },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderWidth, setRenderWidth] = useState(0);
   const [pageImages, setPageImages] = useState<PdfPageImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const firstPageAspectRef = useRef<number | null>(null);
   const panDirectionRef = useRef<"left" | "right" | null>(null);
   const panVelocityRef = useRef(0);
   const panFrameRef = useRef<number | null>(null);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      computeFitToPageZoom: () => {
+        const container = containerRef.current;
+        const aspect = firstPageAspectRef.current;
+        if (!container || !aspect || !renderWidth) return null;
+
+        const scrollerShell = container.closest(".pdf-canvas-shell")
+          ?.parentElement?.closest(".scroll-slim") as HTMLElement | null;
+        const viewportHeight = scrollerShell?.clientHeight ?? window.innerHeight;
+        const verticalChrome = 280;
+        const availableHeight = Math.max(320, viewportHeight - verticalChrome);
+
+        const fitWidthForHeight = availableHeight * aspect;
+        const zoomScale = (fitWidthForHeight / renderWidth) * 100;
+        const clamped = Math.round(Math.max(50, Math.min(200, zoomScale)));
+        return clamped;
+      },
+    }),
+    [renderWidth],
+  );
+
   useEffect(() => {
-    setRenderWidth(containerRef.current?.clientWidth ?? 0);
+    const container = containerRef.current;
+    if (!container) return;
+
+    let rafId: number | null = null;
+    const measure = () => {
+      rafId = null;
+      const width = container.clientWidth;
+      if (width <= 0) return;
+      setRenderWidth((current) => (Math.abs(current - width) < 2 ? current : width));
+    };
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        if (rafId !== null) return;
+        rafId = window.requestAnimationFrame(measure);
+      });
+      observer.observe(container);
+      measure();
+      return () => {
+        observer.disconnect();
+        if (rafId !== null) window.cancelAnimationFrame(rafId);
+      };
+    }
+
+    measure();
+    const onWindowResize = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(measure);
+    };
+    window.addEventListener("resize", onWindowResize);
+    return () => {
+      window.removeEventListener("resize", onWindowResize);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, [pdfUrl, zoom]);
 
   useEffect(() => {
@@ -761,12 +856,19 @@ function PdfCanvasDocument({
 
         const pdf = await getDocumentProxy(buffer.slice());
         const zoomScale = Math.max(0.5, zoom / 100);
+        const devicePixelRatio =
+          typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+        const pixelRatio = Math.min(Math.max(devicePixelRatio, 1), 3);
 
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
           const page = await pdf.getPage(pageNumber);
           const baseViewport = page.getViewport({ scale: 1 });
+          if (pageNumber === 1) {
+            firstPageAspectRef.current = baseViewport.width / baseViewport.height;
+          }
           const fitScale = renderWidth / baseViewport.width;
-          const viewport = page.getViewport({ scale: fitScale * zoomScale });
+          const displayScale = fitScale * zoomScale;
+          const viewport = page.getViewport({ scale: displayScale * pixelRatio });
           const canvas = document.createElement("canvas");
           const context = canvas.getContext("2d");
           if (!context) {
@@ -784,8 +886,8 @@ function PdfCanvasDocument({
 
           const renderedPage = {
             src: canvas.toDataURL("image/png"),
-            width: canvas.width,
-            height: canvas.height,
+            width: Math.max(1, Math.round(canvas.width / pixelRatio)),
+            height: Math.max(1, Math.round(canvas.height / pixelRatio)),
           };
           page.cleanup();
 
@@ -930,7 +1032,7 @@ function PdfCanvasDocument({
       ) : null}
     </div>
   );
-}
+});
 
 function LessonVideoPlayer({
   videoUrl,

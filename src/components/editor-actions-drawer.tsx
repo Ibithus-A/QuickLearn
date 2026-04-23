@@ -6,6 +6,7 @@ import {
   FormEvent,
   KeyboardEvent,
   ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -25,223 +26,278 @@ type AssistantBlock =
   | { type: "divider" }
   | { type: "paragraph"; content: string };
 
-type MathShortcut = {
+/* ---------- Math keypad ----------
+ * Each item describes:
+ *   - labelLatex: a KaTeX snippet rendered inside the button (shows exactly what will be inserted)
+ *   - build(selection): returns the raw text inserted into the composer, plus the
+ *     caret offset measured from the start of that inserted text.
+ *
+ * All items insert their snippet wrapped in `$…$`, so the resulting user message
+ * renders as math in the chat bubble (and is unambiguous to the AI).
+ * If the user has an active selection, the selection is placed inside the
+ * primary slot; otherwise the caret lands inside the first empty slot so the
+ * user can keep typing without breaking flow.
+ */
+
+type MathInsertBuild = (selection: string) => { text: string; caret: number };
+
+type MathInsert = {
   id: string;
   label: string;
-  insert: string;
-  caretOffset?: number;
+  labelLatex: string;
   ariaLabel: string;
-  className?: string;
-  latexLabel?: string;
-  template?: MathTemplateKind;
-  templateValues?: Record<string, string>;
-  buildInsertion?: (selection: string) => { text: string; caretIndex: number };
+  build: MathInsertBuild;
 };
 
-type MathKeypadSection = {
+type MathGroup = {
   id: string;
   label: string;
-  shortcuts: MathShortcut[];
+  items: MathInsert[];
 };
 
-type MathTemplateKind =
-  | "fraction"
-  | "power"
-  | "root"
-  | "integral"
-  | "definiteIntegral"
-  | "limit"
-  | "function"
-  | "derivative";
-
-type ActiveMathTemplate = {
-  kind: MathTemplateKind;
-  values: Record<string, string>;
-};
-
-type ComposerMathItem = {
-  id: string;
-  text: string;
-  latex: string;
-};
-
-type ComposerToken =
-  | { id: string; type: "text"; text: string }
-  | { id: string; type: "math"; text: string; latex: string };
-
-const MATH_SLOT_TOOLS = [
-  { label: "x", insert: "x" },
-  { label: "x²", insert: "x^2" },
-  { label: "xⁿ", insert: "x^n" },
-  { label: "√", insert: "sqrt(x)" },
-  { label: "sin", insert: "sin(x)" },
-  { label: "cos", insert: "cos(x)" },
-  { label: "tan", insert: "tan(x)" },
-  { label: "sec", insert: "sec(x)" },
-  { label: "cosec", insert: "cosec(x)" },
-  { label: "cot", insert: "cot(x)" },
-  { label: "ln", insert: "ln(x)" },
-  { label: "eˣ", insert: "e^x" },
-  { label: "π", insert: "π" },
-];
-
-function groupBaseIfNeeded(value: string) {
-  return /[\s+\-*/]/.test(value) ? `(${value})` : value;
+/** Wrap a LaTeX snippet in `$…$` and return a build result with caret positioned inside the first empty slot. */
+function wrapMath(snippet: string, slotFromStart: number): { text: string; caret: number } {
+  return { text: `$${snippet}$`, caret: 1 + slotFromStart };
 }
 
-const MATH_KEYPAD_SECTIONS: MathKeypadSection[] = [
+/** Insert a fixed symbol with caret placed after it. */
+function insertSymbol(latex: string): MathInsertBuild {
+  const text = `$${latex}$`;
+  return () => ({ text, caret: text.length });
+}
+
+/** Insert a structural snippet. If the user has a selection, it's placed in the primary slot. */
+function insertStructure(
+  withSelection: (sel: string) => { text: string; caret: number },
+  empty: { text: string; caret: number },
+): MathInsertBuild {
+  return (selection) => (selection ? withSelection(selection) : empty);
+}
+
+const MATH_GROUPS: MathGroup[] = [
   {
     id: "structure",
     label: "Structure",
-    shortcuts: [
-      {
-        id: "brackets",
-        label: "()",
-        latexLabel: "\\left(\\square\\right)",
-        insert: "()",
-        caretOffset: -1,
-        ariaLabel: "Insert brackets",
-        buildInsertion: (selection) => ({
-          text: selection ? `(${selection})` : "()",
-          caretIndex: selection ? selection.length + 2 : 1,
-        }),
-      },
-      {
-        id: "squared",
-        label: "x²",
-        latexLabel: "x^2",
-        insert: "",
-        ariaLabel: "Build a square",
-        template: "power",
-        templateValues: { exponent: "2" },
-      },
-      {
-        id: "power",
-        label: "x^n",
-        latexLabel: "x^n",
-        insert: "",
-        ariaLabel: "Build a power",
-        template: "power",
-      },
-      {
-        id: "root",
-        label: "root",
-        latexLabel: "\\sqrt{x}",
-        insert: "",
-        ariaLabel: "Build a square root",
-        template: "root",
-      },
+    items: [
       {
         id: "fraction",
         label: "fraction",
-        latexLabel: "\\frac{a}{b}",
-        insert: "",
-        ariaLabel: "Build a fraction",
-        template: "fraction",
-        className: "min-w-[64px]",
+        labelLatex: "\\frac{a}{b}",
+        ariaLabel: "Insert fraction",
+        build: insertStructure(
+          (sel) => ({ text: `$\\frac{${sel}}{}$`, caret: 8 + sel.length }),
+          wrapMath("\\frac{}{}", 6),
+        ),
       },
       {
-        id: "absolute",
-        label: "| |",
-        latexLabel: "\\left|x\\right|",
-        insert: "| |",
-        caretOffset: -2,
-        ariaLabel: "Insert modulus",
-        buildInsertion: (selection) => ({
-          text: selection ? `|${selection}|` : "| |",
-          caretIndex: selection ? selection.length + 2 : 1,
-        }),
+        id: "sqrt",
+        label: "sqrt",
+        labelLatex: "\\sqrt{x}",
+        ariaLabel: "Insert square root",
+        build: insertStructure(
+          (sel) => ({ text: `$\\sqrt{${sel}}$`, caret: 7 + sel.length + 1 }),
+          wrapMath("\\sqrt{}", 6),
+        ),
+      },
+      {
+        id: "power",
+        label: "aⁿ",
+        labelLatex: "x^{n}",
+        ariaLabel: "Insert exponent",
+        build: insertStructure(
+          (sel) => ({ text: `$${sel}^{}$`, caret: 1 + sel.length + 2 }),
+          wrapMath("x^{}", 3),
+        ),
+      },
+      {
+        id: "squared",
+        label: "a²",
+        labelLatex: "x^{2}",
+        ariaLabel: "Insert squared",
+        build: insertStructure(
+          (sel) => ({ text: `$${sel}^{2}$`, caret: 1 + sel.length + 4 }),
+          wrapMath("x^{2}", 5),
+        ),
+      },
+      {
+        id: "subscript",
+        label: "aₙ",
+        labelLatex: "x_{n}",
+        ariaLabel: "Insert subscript",
+        build: insertStructure(
+          (sel) => ({ text: `$${sel}_{}$`, caret: 1 + sel.length + 2 }),
+          wrapMath("x_{}", 3),
+        ),
+      },
+      {
+        id: "brackets",
+        label: "(…)",
+        labelLatex: "\\left(\\square\\right)",
+        ariaLabel: "Insert brackets",
+        build: insertStructure(
+          (sel) => ({ text: `$\\left(${sel}\\right)$`, caret: 7 + sel.length + 8 }),
+          wrapMath("\\left(\\right)", 7),
+        ),
+      },
+      {
+        id: "abs",
+        label: "|x|",
+        labelLatex: "|x|",
+        ariaLabel: "Insert absolute value",
+        build: insertStructure(
+          (sel) => ({ text: `$|${sel}|$`, caret: 2 + sel.length + 1 }),
+          wrapMath("||", 2),
+        ),
       },
     ],
   },
   {
     id: "calculus",
     label: "Calculus",
-    shortcuts: [
+    items: [
       {
         id: "integral",
         label: "integral",
-        latexLabel: "\\int f(x)\\,dx",
-        insert: "",
-        ariaLabel: "Build an indefinite integral",
-        template: "integral",
-        className: "min-w-[72px]",
+        labelLatex: "\\int f(x)\\,dx",
+        ariaLabel: "Insert indefinite integral",
+        build: insertStructure(
+          (sel) => ({ text: `$\\int ${sel}\\,dx$`, caret: 6 + sel.length }),
+          wrapMath("\\int \\,dx", 5),
+        ),
       },
       {
         id: "definite-integral",
         label: "definite integral",
-        latexLabel: "\\int_a^b f(x)\\,dx",
-        insert: "",
-        ariaLabel: "Build a definite integral",
-        template: "definiteIntegral",
-        className: "min-w-[88px]",
+        labelLatex: "\\int_{a}^{b} f(x)\\,dx",
+        ariaLabel: "Insert definite integral",
+        build: insertStructure(
+          (sel) => ({ text: `$\\int_{}^{} ${sel}\\,dx$`, caret: 7 }),
+          wrapMath("\\int_{}^{} \\,dx", 7),
+        ),
       },
       {
         id: "derivative",
         label: "d/dx",
-        latexLabel: "\\frac{d}{dx}f(x)",
-        insert: "",
-        ariaLabel: "Build a derivative",
-        template: "derivative",
-        templateValues: { numerator: "d", denominator: "dx" },
+        labelLatex: "\\tfrac{d}{dx}",
+        ariaLabel: "Insert derivative operator",
+        build: insertSymbol("\\frac{d}{dx}"),
       },
       {
         id: "dy-dx",
         label: "dy/dx",
-        latexLabel: "\\frac{dy}{dx}",
-        insert: "",
-        ariaLabel: "Build dy by dx",
-        template: "derivative",
-        templateValues: { numerator: "dy", denominator: "dx" },
+        labelLatex: "\\tfrac{dy}{dx}",
+        ariaLabel: "Insert dy over dx",
+        build: insertSymbol("\\frac{dy}{dx}"),
       },
       {
         id: "limit",
         label: "limit",
-        latexLabel: "\\lim_{x\\to a} f(x)",
-        insert: "",
-        ariaLabel: "Build a limit",
-        template: "limit",
-        className: "min-w-[82px]",
+        labelLatex: "\\lim_{x\\to a}",
+        ariaLabel: "Insert limit",
+        build: () => ({ text: "$\\lim_{x\\to }$", caret: 11 }),
+      },
+      {
+        id: "sum",
+        label: "sum",
+        labelLatex: "\\sum_{n=1}^{N}",
+        ariaLabel: "Insert summation",
+        build: () => ({ text: "$\\sum_{n=1}^{}$", caret: 13 }),
       },
     ],
   },
   {
     id: "functions",
     label: "Functions",
-    shortcuts: [
-      { id: "sin", label: "sin()", latexLabel: "\\sin(x)", insert: "", ariaLabel: "Build sine", template: "function", templateValues: { name: "sin" } },
-      { id: "cos", label: "cos()", latexLabel: "\\cos(x)", insert: "", ariaLabel: "Build cosine", template: "function", templateValues: { name: "cos" } },
-      { id: "tan", label: "tan()", latexLabel: "\\tan(x)", insert: "", ariaLabel: "Build tangent", template: "function", templateValues: { name: "tan" } },
-      { id: "sec", label: "sec()", latexLabel: "\\sec(x)", insert: "", ariaLabel: "Build secant", template: "function", templateValues: { name: "sec" } },
-      { id: "cosec", label: "cosec()", latexLabel: "\\cosec(x)", insert: "", ariaLabel: "Build cosecant", template: "function", templateValues: { name: "cosec", latexName: "\\cosec" } },
-      { id: "cot", label: "cot()", latexLabel: "\\cot(x)", insert: "", ariaLabel: "Build cotangent", template: "function", templateValues: { name: "cot" } },
-      { id: "asin", label: "sin⁻¹()", latexLabel: "\\sin^{-1}(x)", insert: "", ariaLabel: "Build inverse sine", template: "function", templateValues: { name: "sin⁻¹", latexName: "\\sin^{-1}" } },
-      { id: "acos", label: "cos⁻¹()", latexLabel: "\\cos^{-1}(x)", insert: "", ariaLabel: "Build inverse cosine", template: "function", templateValues: { name: "cos⁻¹", latexName: "\\cos^{-1}" } },
-      { id: "atan", label: "tan⁻¹()", latexLabel: "\\tan^{-1}(x)", insert: "", ariaLabel: "Build inverse tangent", template: "function", templateValues: { name: "tan⁻¹", latexName: "\\tan^{-1}" } },
-      { id: "log", label: "log()", latexLabel: "\\log(x)", insert: "", ariaLabel: "Build logarithm", template: "function", templateValues: { name: "log" } },
-      { id: "ln", label: "ln()", latexLabel: "\\ln(x)", insert: "", ariaLabel: "Build natural logarithm", template: "function", templateValues: { name: "ln" } },
+    items: [
       {
-        id: "exponential",
-        label: "e^()",
-        latexLabel: "e^x",
-        insert: "",
-        ariaLabel: "Build exponential",
-        template: "power",
-        templateValues: { base: "e", exponent: "x" },
+        id: "sin",
+        label: "sin",
+        labelLatex: "\\sin x",
+        ariaLabel: "Insert sine",
+        build: insertStructure(
+          (sel) => ({ text: `$\\sin(${sel})$`, caret: 6 + sel.length + 2 }),
+          wrapMath("\\sin()", 5),
+        ),
+      },
+      {
+        id: "cos",
+        label: "cos",
+        labelLatex: "\\cos x",
+        ariaLabel: "Insert cosine",
+        build: insertStructure(
+          (sel) => ({ text: `$\\cos(${sel})$`, caret: 6 + sel.length + 2 }),
+          wrapMath("\\cos()", 5),
+        ),
+      },
+      {
+        id: "tan",
+        label: "tan",
+        labelLatex: "\\tan x",
+        ariaLabel: "Insert tangent",
+        build: insertStructure(
+          (sel) => ({ text: `$\\tan(${sel})$`, caret: 6 + sel.length + 2 }),
+          wrapMath("\\tan()", 5),
+        ),
+      },
+      {
+        id: "asin",
+        label: "sin⁻¹",
+        labelLatex: "\\sin^{-1} x",
+        ariaLabel: "Insert inverse sine",
+        build: insertStructure(
+          (sel) => ({ text: `$\\sin^{-1}(${sel})$`, caret: 11 + sel.length + 2 }),
+          wrapMath("\\sin^{-1}()", 10),
+        ),
+      },
+      {
+        id: "ln",
+        label: "ln",
+        labelLatex: "\\ln x",
+        ariaLabel: "Insert natural logarithm",
+        build: insertStructure(
+          (sel) => ({ text: `$\\ln(${sel})$`, caret: 5 + sel.length + 2 }),
+          wrapMath("\\ln()", 4),
+        ),
+      },
+      {
+        id: "log",
+        label: "log",
+        labelLatex: "\\log x",
+        ariaLabel: "Insert logarithm",
+        build: insertStructure(
+          (sel) => ({ text: `$\\log(${sel})$`, caret: 6 + sel.length + 2 }),
+          wrapMath("\\log()", 5),
+        ),
+      },
+      {
+        id: "exp",
+        label: "eˣ",
+        labelLatex: "e^{x}",
+        ariaLabel: "Insert exponential",
+        build: insertStructure(
+          (sel) => ({ text: `$e^{${sel}}$`, caret: 4 + sel.length + 1 }),
+          wrapMath("e^{}", 3),
+        ),
       },
     ],
   },
   {
     id: "symbols",
     label: "Symbols",
-    shortcuts: [
-      { id: "pi", label: "π", latexLabel: "\\pi", insert: "π", caretOffset: 0, ariaLabel: "Insert pi" },
-      { id: "theta", label: "θ", latexLabel: "\\theta", insert: "θ", caretOffset: 0, ariaLabel: "Insert theta" },
-      { id: "infinity", label: "∞", latexLabel: "\\infty", insert: "∞", caretOffset: 0, ariaLabel: "Insert infinity" },
-      { id: "less-equal", label: "≤", latexLabel: "\\leq", insert: " ≤ ", caretOffset: 0, ariaLabel: "Insert less than or equal to" },
-      { id: "greater-equal", label: "≥", latexLabel: "\\geq", insert: " ≥ ", caretOffset: 0, ariaLabel: "Insert greater than or equal to" },
-      { id: "not-equal", label: "≠", latexLabel: "\\neq", insert: " ≠ ", caretOffset: 0, ariaLabel: "Insert not equal to" },
-      { id: "plus-minus", label: "±", latexLabel: "\\pm", insert: " ± ", caretOffset: 0, ariaLabel: "Insert plus or minus" },
+    items: [
+      { id: "pi", label: "π", labelLatex: "\\pi", ariaLabel: "Insert pi", build: insertSymbol("\\pi") },
+      { id: "theta", label: "θ", labelLatex: "\\theta", ariaLabel: "Insert theta", build: insertSymbol("\\theta") },
+      { id: "alpha", label: "α", labelLatex: "\\alpha", ariaLabel: "Insert alpha", build: insertSymbol("\\alpha") },
+      { id: "beta", label: "β", labelLatex: "\\beta", ariaLabel: "Insert beta", build: insertSymbol("\\beta") },
+      { id: "infty", label: "∞", labelLatex: "\\infty", ariaLabel: "Insert infinity", build: insertSymbol("\\infty") },
+      { id: "pm", label: "±", labelLatex: "\\pm", ariaLabel: "Insert plus or minus", build: insertSymbol("\\pm") },
+      { id: "times", label: "×", labelLatex: "\\times", ariaLabel: "Insert times", build: insertSymbol("\\times") },
+      { id: "cdot", label: "·", labelLatex: "\\cdot", ariaLabel: "Insert dot product", build: insertSymbol("\\cdot") },
+      { id: "leq", label: "≤", labelLatex: "\\leq", ariaLabel: "Insert less or equal", build: insertSymbol("\\leq") },
+      { id: "geq", label: "≥", labelLatex: "\\geq", ariaLabel: "Insert greater or equal", build: insertSymbol("\\geq") },
+      { id: "neq", label: "≠", labelLatex: "\\neq", ariaLabel: "Insert not equal", build: insertSymbol("\\neq") },
+      { id: "approx", label: "≈", labelLatex: "\\approx", ariaLabel: "Insert approximately", build: insertSymbol("\\approx") },
+      { id: "to", label: "→", labelLatex: "\\to", ariaLabel: "Insert right arrow", build: insertSymbol("\\to") },
     ],
   },
 ];
@@ -274,9 +330,22 @@ export function EditorActionsDrawer({
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
 
-    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const mediaQuery = window.matchMedia(
+      "(hover: hover) and (pointer: fine) and (min-width: 1024px)",
+    );
     const updateHoverCapability = () => {
-      setCanUseHoverAssistant(mediaQuery.matches);
+      const matches = mediaQuery.matches;
+      setCanUseHoverAssistant(matches);
+      if (!matches) {
+        if (closeHoverAssistantTimerRef.current) {
+          clearTimeout(closeHoverAssistantTimerRef.current);
+          closeHoverAssistantTimerRef.current = null;
+        }
+        setIsHoverAssistantOpen(false);
+        onHoverChange?.(false);
+      } else {
+        onMobileOpenChange?.(false);
+      }
     };
 
     updateHoverCapability();
@@ -284,7 +353,7 @@ export function EditorActionsDrawer({
     return () => {
       mediaQuery.removeEventListener("change", updateHoverCapability);
     };
-  }, []);
+  }, [onHoverChange, onMobileOpenChange]);
 
   useEffect(() => {
     return () => {
@@ -322,16 +391,9 @@ export function EditorActionsDrawer({
         <div
           onMouseEnter={openHoverAssistant}
           onMouseLeave={closeHoverAssistant}
-          className={[
-            "pointer-events-none absolute inset-y-0 right-0 z-30 hidden md:block",
-            "w-[min(460px,46vw)]",
-          ].join(" ")}
+          className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[min(460px,46vw)] md:block"
         >
-          <div
-            className={[
-              "pointer-events-auto absolute inset-y-0 right-0 w-8 md:w-10",
-            ].join(" ")}
-          />
+          <div className="pointer-events-auto absolute inset-y-0 right-0 w-8 md:w-10" />
 
           <aside
             className={[
@@ -355,7 +417,7 @@ export function EditorActionsDrawer({
         <button
           type="button"
           onClick={() => onMobileOpenChange?.(true)}
-          className="fixed bottom-4 right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-800 shadow-[0_18px_45px_rgba(9,9,11,0.14)] transition hover:bg-zinc-50"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-800 shadow-[0_18px_45px_rgba(9,9,11,0.14)] transition hover:bg-zinc-50 active:scale-95"
           aria-label="Open AI assistant"
         >
           <AssistantIcon className="h-5 w-5" />
@@ -365,7 +427,7 @@ export function EditorActionsDrawer({
       {!canUseHoverAssistant ? (
         <div
           className={[
-            "fixed inset-0 z-50 transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "fixed inset-0 z-50 transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
             isMobileOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
           ].join(" ")}
         >
@@ -373,16 +435,16 @@ export function EditorActionsDrawer({
             type="button"
             onClick={() => onMobileOpenChange?.(false)}
             className={[
-              "absolute inset-0 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
               isMobileOpen ? "opacity-100" : "opacity-0",
             ].join(" ")}
             aria-label="Close AI assistant"
           />
           <aside
             className={[
-              "absolute inset-x-0 bottom-0 top-16 overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-[var(--surface-sidebar)] shadow-[0_-24px_60px_rgba(9,9,11,0.18)]",
-              "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              isMobileOpen ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0",
+              "absolute inset-x-0 bottom-0 top-12 overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-[var(--surface-sidebar)] shadow-[0_-28px_70px_rgba(9,9,11,0.22)] sm:top-16",
+              "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+              isMobileOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0",
             ].join(" ")}
           >
             <div className="flex h-full min-h-0 flex-col">
@@ -434,24 +496,41 @@ function DrawerContent({
   workspaceContext: string;
 }) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
-  const [composerTokens, setComposerTokens] = useState<ComposerToken[]>([]);
-  const [draft, setDraft] = useState("");
-  const [activeTextTokenId, setActiveTextTokenId] = useState<string | null>(null);
+  const [isEmpty, setIsEmpty] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isMathsOpen, setIsMathsOpen] = useState(false);
-  const [activeMathTemplate, setActiveMathTemplate] = useState<ActiveMathTemplate | null>(null);
-  const composerRef = useRef<HTMLInputElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+
+  const updateIsEmpty = useCallback(() => {
+    const node = composerRef.current;
+    if (!node) return;
+    const hasText = (node.textContent ?? "").trim().length > 0;
+    const hasChip = node.querySelector("[data-math-chip]") !== null;
+    setIsEmpty(!hasText && !hasChip);
+  }, []);
+
+  const clearComposer = useCallback(() => {
+    if (composerRef.current) composerRef.current.innerHTML = "";
+    setIsEmpty(true);
+  }, []);
 
   useEffect(() => {
     setMessages([]);
-    setComposerTokens([]);
-    setDraft("");
-    setActiveTextTokenId(null);
     setErrorMessage("");
     setIsMathsOpen(false);
-    setActiveMathTemplate(null);
-  }, [pageTitle]);
+    clearComposer();
+  }, [pageNodeId, clearComposer]);
+
+  const rememberSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (composerRef.current?.contains(range.commonAncestorContainer)) {
+      savedRangeRef.current = range.cloneRange();
+    }
+  };
 
   const helperText = useMemo(() => {
     if (pageContent.trim()) {
@@ -461,20 +540,47 @@ function DrawerContent({
     return "This page is blank, so Arthur will work from your prompt alone.";
   }, [pageContent]);
 
-  const sendMessage = async () => {
-    const trimmedDraft = draft.trim();
-    const committedTokens = trimmedDraft
-      ? [...composerTokens, createTextToken(trimmedDraft)]
-      : composerTokens;
-    const messageContent = serializeComposerTokens(committedTokens, "text");
-    if (!messageContent || isSending) return;
+  const serializeComposer = (): string => {
+    const root = composerRef.current;
+    if (!root) return "";
 
-    const displayContent = serializeComposerTokens(committedTokens, "display");
-    const nextMessages = [...messages, { role: "user" as const, content: displayContent }];
+    const walk = (nodes: NodeList): string => {
+      let out = "";
+      for (const node of Array.from(nodes)) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          out += node.textContent ?? "";
+          continue;
+        }
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.dataset.mathChip !== undefined) {
+          const latex = node.dataset.latex ?? "";
+          out += `$${latex}$`;
+          continue;
+        }
+        if (node.tagName === "BR") {
+          out += "\n";
+          continue;
+        }
+        if (node.tagName === "DIV" || node.tagName === "P") {
+          if (out && !out.endsWith("\n")) out += "\n";
+          out += walk(node.childNodes);
+          continue;
+        }
+        out += walk(node.childNodes);
+      }
+      return out;
+    };
+
+    return walk(root.childNodes);
+  };
+
+  const sendMessage = async () => {
+    const content = serializeComposer().replace(/\s+$/, "").trim();
+    if (!content || isSending) return;
+
+    const nextMessages = [...messages, { role: "user" as const, content }];
     setMessages(nextMessages);
-    setComposerTokens([]);
-    setDraft("");
-    setActiveTextTokenId(null);
+    clearComposer();
     setErrorMessage("");
     setIsSending(true);
 
@@ -514,75 +620,69 @@ function DrawerContent({
     await sendMessage();
   };
 
-  const handleKeyDown = async (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Backspace" && !draft && composerTokens.length) {
-      event.preventDefault();
-      setComposerTokens((current) => current.slice(0, -1));
-      return;
-    }
-
+  const handleKeyDown = async (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     await sendMessage();
   };
 
-  const commitDraftText = () => {
-    const text = draft.trim();
-    if (!text) return;
+  const insertMath = (item: MathInsert) => {
+    const root = composerRef.current;
+    if (!root) return;
 
-    setComposerTokens((current) => [...current, createTextToken(text)]);
-    setDraft("");
-    setActiveTextTokenId(null);
-  };
+    const buildResult = item.build("");
+    const rawLatex = buildResult.text.replace(/^\$|\$$/g, "");
+    const displayLatex = rawLatex.replace(/\{\}/g, "{\\square}");
 
-  const insertComposerToken = (token: ComposerToken) => {
-    setComposerTokens((current) => {
-      if (!activeTextTokenId) return [...current, token];
-
-      const activeIndex = current.findIndex((candidate) => candidate.id === activeTextTokenId);
-      if (activeIndex === -1) return [...current, token];
-
-      return [
-        ...current.slice(0, activeIndex + 1),
-        token,
-        ...current.slice(activeIndex + 1),
-      ];
-    });
-    setActiveTextTokenId(null);
-  };
-
-  const insertShortcut = (shortcut: MathShortcut) => {
-    if (shortcut.template) {
-      if (!activeTextTokenId) commitDraftText();
-      setActiveMathTemplate(createMathTemplate(shortcut.template, shortcut.templateValues));
-      return;
+    let rendered: string;
+    try {
+      rendered = katex.renderToString(displayLatex, {
+        throwOnError: false,
+        strict: "ignore",
+      });
+    } catch {
+      rendered = rawLatex;
     }
 
-    const selection = "";
-    const insertion = shortcut.buildInsertion
-      ? shortcut.buildInsertion(selection)
-      : {
-          text: shortcut.insert,
-          caretIndex: shortcut.insert.length + (shortcut.caretOffset ?? 0),
-        };
+    const chip = document.createElement("span");
+    chip.setAttribute("contenteditable", "false");
+    chip.dataset.mathChip = "true";
+    chip.dataset.latex = rawLatex;
+    chip.className = "math-chip";
+    chip.innerHTML = rendered;
 
-    setDraft((current) => `${current}${insertion.text}`);
-    requestAnimationFrame(() => composerRef.current?.focus());
-  };
+    const selection = window.getSelection();
+    const savedRange = savedRangeRef.current;
+    let range: Range;
 
-  const commitMathTemplate = () => {
-    if (!activeMathTemplate) return;
+    if (selection && selection.rangeCount && root.contains(selection.anchorNode)) {
+      range = selection.getRangeAt(0);
+      range.deleteContents();
+    } else if (savedRange && root.contains(savedRange.commonAncestorContainer)) {
+      range = savedRange.cloneRange();
+      range.deleteContents();
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(root);
+      range.collapse(false);
+    }
 
-    const expression = serializeMathTemplate(activeMathTemplate);
-    commitDraftText();
-    insertComposerToken({
-      id: `${Date.now()}-math-${Math.random().toString(36).slice(2)}`,
-      type: "math",
-      text: expression.text,
-      latex: expression.latex,
-    });
-    setActiveMathTemplate(null);
-    requestAnimationFrame(() => composerRef.current?.focus());
+    range.insertNode(chip);
+
+    const spacer = document.createTextNode("\u00A0");
+    chip.after(spacer);
+
+    const caretRange = document.createRange();
+    caretRange.setStart(spacer, 1);
+    caretRange.collapse(true);
+
+    const liveSelection = window.getSelection();
+    liveSelection?.removeAllRanges();
+    liveSelection?.addRange(caretRange);
+    savedRangeRef.current = caretRange.cloneRange();
+
+    root.focus();
+    updateIsEmpty();
   };
 
   return (
@@ -638,100 +738,32 @@ function DrawerContent({
           </div>
 
           <form onSubmit={handleSubmit} className="border-t border-zinc-200/80 bg-white px-3 py-3">
-            <div className="space-y-2 rounded-[12px] bg-zinc-50 px-2.5 py-2.5 ring-1 ring-inset ring-zinc-200/80 transition focus-within:bg-white focus-within:ring-zinc-400">
-              {isMathsOpen ? (
-                <div className="rounded-[10px] border border-zinc-200 bg-white p-2">
-                  <div className="max-h-[214px] space-y-2.5 overflow-y-auto pr-0.5">
-                    {MATH_KEYPAD_SECTIONS.map((section) => (
-                      <section key={section.id} aria-label={`${section.label} maths controls`}>
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
-                            {section.label}
-                          </p>
-                          <span className="h-px flex-1 bg-zinc-100" />
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {section.shortcuts.map((shortcut) => (
-                            <MathShortcutButton
-                              key={shortcut.id}
-                              shortcut={shortcut}
-                              onClick={() => insertShortcut(shortcut)}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {activeMathTemplate ? (
-                <MathTemplateComposer
-                  template={activeMathTemplate}
-                  onChange={setActiveMathTemplate}
-                  onCancel={() => setActiveMathTemplate(null)}
-                  onInsert={commitMathTemplate}
-                />
-              ) : null}
+            <div className="flex flex-col gap-2 rounded-[14px] bg-zinc-50 px-2.5 py-2.5 ring-1 ring-inset ring-zinc-200/80 transition focus-within:bg-white focus-within:ring-zinc-400">
+              {isMathsOpen ? <MathKeypad onInsert={insertMath} /> : null}
 
               <div className="flex items-end gap-1.5">
-                <div
-                  className="scroll-slim max-h-28 min-h-[52px] flex-1 overflow-y-auto rounded-[9px] px-0.5 py-1"
-                  onClick={() => composerRef.current?.focus()}
-                >
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 text-sm leading-7 text-zinc-800">
-                    {composerTokens.map((token) =>
-                      token.type === "math" ? (
-                        <ComposerMathChip
-                          key={token.id}
-                          item={token}
-                          onRemove={() =>
-                            setComposerTokens((current) =>
-                              current.filter((candidate) => candidate.id !== token.id),
-                            )
-                          }
-                        />
-                      ) : (
-                        <input
-                          key={token.id}
-                          value={token.text}
-                          onFocus={() => setActiveTextTokenId(token.id)}
-                          onChange={(event) => {
-                            const nextText = event.target.value;
-                            setComposerTokens((current) =>
-                              current.map((candidate) =>
-                                candidate.id === token.id
-                                  ? { ...candidate, text: nextText }
-                                  : candidate,
-                              ),
-                            );
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              void sendMessage();
-                            }
-                          }}
-                          aria-label="Edit prompt text"
-                          className="min-h-8 min-w-[48px] max-w-full bg-transparent text-sm leading-7 text-zinc-800 outline-none"
-                          style={{ width: `${Math.max(token.text.length + 1, 4)}ch` }}
-                        />
-                      ),
-                    )}
-                    <input
-                      ref={composerRef}
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onFocus={() => setActiveTextTokenId(null)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={composerTokens.length ? "" : "Ask Arthur anything."}
-                      aria-label="Ask Arthur anything"
-                      className="min-h-8 min-w-[150px] flex-1 bg-transparent text-sm leading-7 text-zinc-800 placeholder:text-zinc-500 outline-none"
-                    />
-                  </div>
+                <div className="relative min-h-[28px] w-full flex-1">
+                  <div
+                    ref={composerRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-label="Ask Arthur anything"
+                    onInput={updateIsEmpty}
+                    onBlur={rememberSelection}
+                    onKeyDown={handleKeyDown}
+                    className="math-composer scroll-slim max-h-[160px] min-h-[28px] w-full overflow-y-auto bg-transparent px-1.5 py-1 text-sm leading-6 text-zinc-800 outline-none"
+                  />
+                  {isEmpty ? (
+                    <span className="pointer-events-none absolute left-[0.375rem] top-1 text-sm leading-6 text-zinc-500">
+                      Ask Arthur anything.
+                    </span>
+                  ) : null}
                 </div>
                 <button
                   type="button"
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => setIsMathsOpen((current) => !current)}
                   className={[
                     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border transition",
@@ -749,7 +781,7 @@ function DrawerContent({
                   onClick={() => {
                     void sendMessage();
                   }}
-                  disabled={(!draft.trim() && composerTokens.length === 0) || isSending}
+                  disabled={isEmpty || isSending}
                   aria-label="Send message"
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-zinc-900 text-white shadow-[0_6px_16px_rgba(9,9,11,0.16)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
                 >
@@ -767,18 +799,62 @@ function DrawerContent({
   );
 }
 
-function MathShortcutButton({
-  shortcut,
+function MathKeypad({ onInsert }: { onInsert: (item: MathInsert) => void }) {
+  const [activeGroupId, setActiveGroupId] = useState(MATH_GROUPS[0].id);
+  const activeGroup = MATH_GROUPS.find((group) => group.id === activeGroupId) ?? MATH_GROUPS[0];
+
+  return (
+    <div className="overflow-hidden rounded-[12px] border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <div
+        role="tablist"
+        aria-label="Maths categories"
+        className="flex items-center gap-1 border-b border-zinc-200/80 bg-zinc-50/70 px-1.5 py-1.5"
+      >
+        {MATH_GROUPS.map((group) => {
+          const isActive = group.id === activeGroupId;
+          return (
+            <button
+              key={group.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setActiveGroupId(group.id)}
+              className={[
+                "inline-flex flex-1 items-center justify-center rounded-[8px] px-2 py-1.5 text-[11px] font-medium transition",
+                isActive
+                  ? "bg-white text-zinc-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                  : "text-zinc-500 hover:text-zinc-800",
+              ].join(" ")}
+            >
+              {group.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-5 gap-1.5 p-2">
+        {activeGroup.items.map((item) => (
+          <MathKeypadButton
+            key={item.id}
+            item={item}
+            onClick={() => onInsert(item)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MathKeypadButton({
+  item,
   onClick,
 }: {
-  shortcut: MathShortcut;
+  item: MathInsert;
   onClick: () => void;
 }) {
   const html = useMemo(() => {
-    if (!shortcut.latexLabel) return null;
-
     try {
-      return katex.renderToString(shortcut.latexLabel, {
+      return katex.renderToString(item.labelLatex, {
         displayMode: false,
         throwOnError: false,
         strict: "ignore",
@@ -786,591 +862,27 @@ function MathShortcutButton({
     } catch {
       return null;
     }
-  }, [shortcut.latexLabel]);
+  }, [item.labelLatex]);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={[
-        "inline-flex h-8 min-w-[46px] items-center justify-center rounded-[10px] border border-zinc-200/90 bg-[var(--surface-sidebar)] px-3 text-[12.5px] font-normal text-zinc-600 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition hover:border-zinc-300 hover:bg-white hover:text-zinc-700",
-        shortcut.className ?? "",
-      ].join(" ")}
-      aria-label={shortcut.ariaLabel}
+      onMouseDown={(event) => event.preventDefault()}
+      title={item.ariaLabel}
+      aria-label={item.ariaLabel}
+      className="group inline-flex h-11 items-center justify-center rounded-[10px] border border-zinc-200/80 bg-white text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 active:bg-zinc-100"
     >
       {html ? (
         <span
-          className="math-shortcut-label inline-flex items-center justify-center"
+          className="math-keypad-label inline-flex items-center justify-center leading-none"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        shortcut.label
+        <span className="text-[15px]">{item.label}</span>
       )}
     </button>
   );
-}
-
-function ComposerMathChip({
-  item,
-  onRemove,
-}: {
-  item: ComposerMathItem;
-  onRemove: () => void;
-}) {
-  const html = useMemo(() => {
-    try {
-      return katex.renderToString(item.latex, {
-        displayMode: false,
-        throwOnError: false,
-        strict: "ignore",
-      });
-    } catch {
-      return null;
-    }
-  }, [item.latex]);
-
-  return (
-    <span className="inline-flex min-h-8 items-center gap-1.5 rounded-[9px] border border-zinc-200 bg-[var(--surface-sidebar)] px-2.5 py-1 text-sm text-zinc-700 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-      {html ? (
-        <span
-          className="math-shortcut-label inline-flex items-center justify-center"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : (
-        <span className="math-shortcut-label inline-flex items-center justify-center">
-          {item.text}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700"
-        aria-label={`Remove ${item.text}`}
-      >
-        ×
-      </button>
-    </span>
-  );
-}
-
-function createTextToken(text: string): ComposerToken {
-  return {
-    id: `${Date.now()}-text-${Math.random().toString(36).slice(2)}`,
-    type: "text",
-    text,
-  };
-}
-
-function serializeComposerTokens(tokens: ComposerToken[], mode: "text" | "display") {
-  return tokens
-    .map((token) => {
-      if (token.type === "math") {
-        return mode === "display" ? `$${token.latex}$` : token.text;
-      }
-
-      return token.text;
-    })
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function ComposerMathPreview({
-  latex,
-  fallback,
-}: {
-  latex: string;
-  fallback: string;
-}) {
-  const html = useMemo(() => {
-    try {
-      return katex.renderToString(latex, {
-        displayMode: true,
-        throwOnError: false,
-        strict: "ignore",
-      });
-    } catch {
-      return null;
-    }
-  }, [latex]);
-
-  return (
-    <div className="scroll-slim flex min-h-12 items-center overflow-x-auto rounded-[10px] border border-zinc-200/70 bg-white/80 px-3 py-2 text-zinc-800">
-      {html ? (
-        <div
-          className="math-builder-preview min-w-max"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : (
-        <p className="min-w-max font-serif text-sm text-zinc-600">{fallback}</p>
-      )}
-    </div>
-  );
-}
-
-function MathTemplateComposer({
-  template,
-  onChange,
-  onCancel,
-  onInsert,
-}: {
-  template: ActiveMathTemplate;
-  onChange: (template: ActiveMathTemplate) => void;
-  onCancel: () => void;
-  onInsert: () => void;
-}) {
-  const preview = useMemo(() => serializeMathTemplate(template), [template]);
-  const [focusedSlot, setFocusedSlot] = useState<string | null>(null);
-  const updateValue = (key: string, value: string) => {
-    onChange({
-      ...template,
-      values: {
-        ...template.values,
-        [key]: value,
-      },
-    });
-  };
-  const activeSlot = focusedSlot ?? getDefaultTemplateSlot(template.kind);
-  const appendToSlot = (value: string) => {
-    const currentValue = template.values[activeSlot] ?? "";
-    updateValue(activeSlot, currentValue ? `${currentValue}${value}` : value);
-  };
-
-  return (
-    <div className="rounded-[12px] border border-zinc-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-3 py-2.5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
-            Math builder
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">Fill the slots, then insert the rendered expression.</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-[8px] border border-zinc-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-700"
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            onClick={onInsert}
-            className="rounded-[8px] bg-zinc-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-[0_6px_14px_rgba(9,9,11,0.12)] transition hover:bg-zinc-800"
-          >
-            Insert
-          </button>
-        </div>
-      </div>
-
-      <div className="border-b border-zinc-100 bg-[var(--surface-sidebar)] px-3 py-2.5">
-        <ComposerMathPreview latex={preview.latex} fallback={preview.text} />
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 border-b border-zinc-100 px-3 py-2">
-        {MATH_SLOT_TOOLS.map((tool) => (
-          <button
-            key={tool.label}
-            type="button"
-            onClick={() => appendToSlot(tool.insert)}
-            className="inline-flex h-7 min-w-8 items-center justify-center rounded-[8px] border border-zinc-200 bg-[var(--surface-sidebar)] px-2 text-[11px] text-zinc-600 transition hover:border-zinc-300 hover:bg-white hover:text-zinc-800"
-            aria-label={`Insert ${tool.label} into active slot`}
-          >
-            {tool.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="px-3 py-3">
-        {template.kind === "definiteIntegral" ? (
-          <div className="flex min-h-[122px] w-full items-center rounded-[12px] border border-zinc-200/80 bg-white px-3 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-            <div className="relative h-[96px] w-[72px] shrink-0">
-              <MathSlot
-                ariaLabel="Upper limit"
-                placeholder="b"
-                value={template.values.upper}
-                onChange={(value) => updateValue("upper", value)}
-                onFocus={() => setFocusedSlot("upper")}
-                className="absolute left-0 top-0 h-7 w-14 text-center text-[12px]"
-              />
-              <span className="absolute left-4 top-4 font-serif text-[72px] leading-[0.85] text-zinc-800">
-                ∫
-              </span>
-              <MathSlot
-                ariaLabel="Lower limit"
-                placeholder="a"
-                value={template.values.lower}
-                onChange={(value) => updateValue("lower", value)}
-                onFocus={() => setFocusedSlot("lower")}
-                className="absolute bottom-0 left-0 h-7 w-14 text-center text-[12px]"
-              />
-            </div>
-            <div className="flex min-w-0 flex-1 items-center gap-2 pl-1">
-              <MathSlot
-                ariaLabel="Integrand"
-                placeholder="f(x)"
-                value={template.values.expression}
-                onChange={(value) => updateValue("expression", value)}
-                onFocus={() => setFocusedSlot("expression")}
-                className="h-12 min-w-0 flex-1 text-base"
-              />
-              <span className="shrink-0 text-sm italic text-zinc-500">d</span>
-              <MathSlot
-                ariaLabel="Variable"
-                placeholder="x"
-                value={template.values.variable}
-                onChange={(value) => updateValue("variable", value)}
-                onFocus={() => setFocusedSlot("variable")}
-                className="h-10 w-14 shrink-0 text-center"
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {template.kind === "integral" ? (
-          <div className="flex min-h-[92px] w-full items-center gap-3 rounded-[12px] border border-zinc-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-            <span className="shrink-0 font-serif text-[72px] leading-[0.85] text-zinc-800">∫</span>
-            <MathSlot
-              ariaLabel="Integrand"
-              placeholder="f(x)"
-              value={template.values.expression}
-              onChange={(value) => updateValue("expression", value)}
-              onFocus={() => setFocusedSlot("expression")}
-              className="h-12 min-w-0 flex-1 text-base"
-            />
-            <span className="shrink-0 text-sm italic text-zinc-500">d</span>
-            <MathSlot
-              ariaLabel="Variable"
-              placeholder="x"
-              value={template.values.variable}
-              onChange={(value) => updateValue("variable", value)}
-              onFocus={() => setFocusedSlot("variable")}
-              className="h-10 w-14 shrink-0 text-center"
-            />
-          </div>
-        ) : null}
-
-        {template.kind === "fraction" ? (
-          <div className="inline-grid min-w-[180px] grid-rows-[42px_1px_42px] items-center py-1">
-            <MathSlot
-              ariaLabel="Numerator"
-              placeholder="a"
-              value={template.values.numerator}
-              onChange={(value) => updateValue("numerator", value)}
-              onFocus={() => setFocusedSlot("numerator")}
-              className="mx-auto h-10 w-full text-center"
-            />
-            <span className="h-px w-full bg-zinc-700" />
-            <MathSlot
-              ariaLabel="Denominator"
-              placeholder="b"
-              value={template.values.denominator}
-              onChange={(value) => updateValue("denominator", value)}
-              onFocus={() => setFocusedSlot("denominator")}
-              className="mx-auto h-10 w-full text-center"
-            />
-          </div>
-        ) : null}
-
-        {template.kind === "power" ? (
-          <div className="flex min-w-[190px] items-start gap-1.5 py-1">
-            <MathSlot
-              ariaLabel="Base"
-              placeholder="x"
-              value={template.values.base}
-              onChange={(value) => updateValue("base", value)}
-              onFocus={() => setFocusedSlot("base")}
-              className="h-10 min-w-[112px]"
-            />
-            <MathSlot
-              ariaLabel="Power"
-              placeholder="n"
-              value={template.values.exponent}
-              onChange={(value) => updateValue("exponent", value)}
-              onFocus={() => setFocusedSlot("exponent")}
-              className="h-7 w-16 text-center text-[12px]"
-            />
-          </div>
-        ) : null}
-
-        {template.kind === "root" ? (
-          <div className="flex min-w-[190px] items-center gap-1.5 py-1">
-            <span className="font-serif text-4xl leading-none text-zinc-700">√</span>
-            <div className="border-t border-zinc-700 pt-1">
-              <MathSlot
-                ariaLabel="Radicand"
-                placeholder="x"
-                value={template.values.radicand}
-                onChange={(value) => updateValue("radicand", value)}
-                onFocus={() => setFocusedSlot("radicand")}
-                className="h-10 min-w-[156px]"
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {template.kind === "limit" ? (
-          <div className="flex min-w-[260px] items-center gap-3 py-1">
-            <div className="grid justify-items-center">
-              <span className="font-serif text-2xl text-zinc-700">lim</span>
-              <div className="flex items-center gap-1">
-                <MathSlot
-                  ariaLabel="Limit variable"
-                  placeholder="x"
-                  value={template.values.variable}
-                  onChange={(value) => updateValue("variable", value)}
-                  onFocus={() => setFocusedSlot("variable")}
-                  className="h-7 w-12 text-center text-[12px]"
-                />
-                <span className="text-xs text-zinc-500">→</span>
-                <MathSlot
-                  ariaLabel="Limit target"
-                  placeholder="a"
-                  value={template.values.target}
-                  onChange={(value) => updateValue("target", value)}
-                  onFocus={() => setFocusedSlot("target")}
-                  className="h-7 w-12 text-center text-[12px]"
-                />
-              </div>
-            </div>
-            <MathSlot
-              ariaLabel="Limit expression"
-              placeholder="f(x)"
-              value={template.values.expression}
-              onChange={(value) => updateValue("expression", value)}
-              onFocus={() => setFocusedSlot("expression")}
-              className="h-10 min-w-[144px] flex-1"
-            />
-          </div>
-        ) : null}
-
-        {template.kind === "function" ? (
-          <div className="flex min-w-[220px] items-center gap-1.5 py-1">
-            <span className="font-serif text-2xl text-zinc-700">
-              {template.values.name}
-            </span>
-            <span className="font-serif text-2xl text-zinc-500">(</span>
-            <MathSlot
-              ariaLabel={`${template.values.name} input`}
-              placeholder="x"
-              value={template.values.argument}
-              onChange={(value) => updateValue("argument", value)}
-              onFocus={() => setFocusedSlot("argument")}
-              className="h-10 min-w-[148px] flex-1"
-            />
-            <span className="font-serif text-2xl text-zinc-500">)</span>
-          </div>
-        ) : null}
-
-        {template.kind === "derivative" ? (
-          <div className="flex min-w-[250px] items-center gap-3 py-1">
-            <div className="inline-grid min-w-[68px] grid-rows-[32px_1px_32px] items-center">
-              <MathSlot
-                ariaLabel="Derivative numerator"
-                placeholder="d"
-                value={template.values.numerator}
-                onChange={(value) => updateValue("numerator", value)}
-                onFocus={() => setFocusedSlot("numerator")}
-                className="mx-auto h-8 w-16 text-center text-[12px]"
-              />
-              <span className="h-px w-full bg-zinc-700" />
-              <MathSlot
-                ariaLabel="Derivative denominator"
-                placeholder="dx"
-                value={template.values.denominator}
-                onChange={(value) => updateValue("denominator", value)}
-                onFocus={() => setFocusedSlot("denominator")}
-                className="mx-auto h-8 w-16 text-center text-[12px]"
-              />
-            </div>
-            <MathSlot
-              ariaLabel="Derivative expression"
-              placeholder="f(x)"
-              value={template.values.expression}
-              onChange={(value) => updateValue("expression", value)}
-              onFocus={() => setFocusedSlot("expression")}
-              className="h-10 min-w-[144px] flex-1"
-            />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function MathSlot({
-  value,
-  placeholder,
-  ariaLabel,
-  className,
-  onChange,
-  onFocus,
-}: {
-  value: string;
-  placeholder: string;
-  ariaLabel: string;
-  className?: string;
-  onChange: (value: string) => void;
-  onFocus?: () => void;
-}) {
-  return (
-    <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onFocus={onFocus}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      }}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      className={[
-        "rounded-[8px] border border-zinc-200/80 bg-[var(--surface-sidebar)] px-2 font-serif text-sm text-zinc-800 outline-none transition placeholder:text-zinc-300 hover:border-zinc-300 hover:bg-white focus:border-zinc-400 focus:bg-white focus:shadow-[0_0_0_3px_rgba(24,24,27,0.06)]",
-        className ?? "",
-      ].join(" ")}
-    />
-  );
-}
-
-function createMathTemplate(
-  kind: MathTemplateKind,
-  initialValues: Record<string, string> = {},
-): ActiveMathTemplate {
-  if (kind === "definiteIntegral") {
-    return { kind, values: { lower: "", upper: "", expression: "", variable: "x", ...initialValues } };
-  }
-
-  if (kind === "integral") {
-    return { kind, values: { expression: "", variable: "x", ...initialValues } };
-  }
-
-  if (kind === "fraction") {
-    return { kind, values: { numerator: "", denominator: "", ...initialValues } };
-  }
-
-  if (kind === "power") {
-    return { kind, values: { base: "", exponent: "", ...initialValues } };
-  }
-
-  if (kind === "root") {
-    return { kind, values: { radicand: "", ...initialValues } };
-  }
-
-  if (kind === "function") {
-    return { kind, values: { name: "f", latexName: "", argument: "", ...initialValues } };
-  }
-
-  if (kind === "derivative") {
-    return {
-      kind,
-      values: { numerator: "d", denominator: "dx", expression: "", ...initialValues },
-    };
-  }
-
-  return { kind, values: { variable: "x", target: "", expression: "", ...initialValues } };
-}
-
-function getDefaultTemplateSlot(kind: MathTemplateKind) {
-  if (kind === "fraction") return "numerator";
-  if (kind === "power") return "base";
-  if (kind === "root") return "radicand";
-  if (kind === "limit") return "expression";
-  if (kind === "function") return "argument";
-  if (kind === "derivative") return "expression";
-  return "expression";
-}
-
-function serializeMathTemplate(template: ActiveMathTemplate) {
-  const value = (key: string, fallback: string) => template.values[key]?.trim() || fallback;
-
-  if (template.kind === "definiteIntegral") {
-    const lower = value("lower", "a");
-    const upper = value("upper", "b");
-    const expression = value("expression", "f(x)");
-    const variable = value("variable", "x");
-    return {
-      text: `∫_${lower}^${upper} ${expression} d${variable}`,
-      latex: `\\int_{${formatSlotLatex(lower)}}^{${formatSlotLatex(upper)}} ${formatSlotLatex(expression)} \\, d${formatSlotLatex(variable)}`,
-    };
-  }
-
-  if (template.kind === "integral") {
-    const expression = value("expression", "f(x)");
-    const variable = value("variable", "x");
-    return {
-      text: `∫ ${expression} d${variable}`,
-      latex: `\\int ${formatSlotLatex(expression)} \\, d${formatSlotLatex(variable)}`,
-    };
-  }
-
-  if (template.kind === "fraction") {
-    const numerator = value("numerator", "a");
-    const denominator = value("denominator", "b");
-    return {
-      text: `(${numerator})/(${denominator})`,
-      latex: `\\frac{${formatSlotLatex(numerator)}}{${formatSlotLatex(denominator)}}`,
-    };
-  }
-
-  if (template.kind === "power") {
-    const base = value("base", "x");
-    const exponent = value("exponent", "n");
-    return {
-      text: `${groupBaseIfNeeded(base)}^(${exponent})`,
-      latex: `{${formatSlotLatex(base)}}^{${formatSlotLatex(exponent)}}`,
-    };
-  }
-
-  if (template.kind === "root") {
-    const radicand = value("radicand", "x");
-    return {
-      text: `√(${radicand})`,
-      latex: `\\sqrt{${formatSlotLatex(radicand)}}`,
-    };
-  }
-
-  if (template.kind === "function") {
-    const name = value("name", "f");
-    const latexName = value("latexName", `\\${name}`);
-    const argument = value("argument", "x");
-    return {
-      text: `${name}(${argument})`,
-      latex: `${latexName}(${formatSlotLatex(argument)})`,
-    };
-  }
-
-  if (template.kind === "derivative") {
-    const numerator = value("numerator", "d");
-    const denominator = value("denominator", "dx");
-    const expression = value("expression", "f(x)");
-    return {
-      text: `${numerator}/${denominator} ${expression}`,
-      latex: `\\frac{${formatSlotLatex(numerator)}}{${formatSlotLatex(denominator)}} ${formatSlotLatex(expression)}`,
-    };
-  }
-
-  const variable = value("variable", "x");
-  const target = value("target", "a");
-  const expression = value("expression", "f(x)");
-  return {
-    text: `lim(${variable}→${target}) ${expression}`,
-    latex: `\\lim_{${formatSlotLatex(variable)}\\to ${formatSlotLatex(target)}} ${formatSlotLatex(expression)}`,
-  };
-}
-
-function formatSlotLatex(value: string) {
-  return value
-    .trim()
-    .replace(/π/g, "\\pi")
-    .replace(/\binfinity\b/gi, "\\infty")
-    .replace(/sqrt\(([^()]*)\)/gi, "\\sqrt{$1}")
-    .replace(/\b(sin|cos|tan|sec|cosec|cot|ln|log)\(([^()]*)\)/gi, (_, name: string, argument: string) => {
-      const latexName = name.toLowerCase() === "cosec" ? "\\cosec" : `\\${name.toLowerCase()}`;
-      return `${latexName}(${argument})`;
-    })
-    .replace(/([a-zA-Z0-9π)]+)\^\(([^()]*)\)/g, "{$1}^{$2}")
-    .replace(/([a-zA-Z0-9π)]+)\^([a-zA-Z0-9π]+)/g, "{$1}^{$2}");
 }
 
 function RenderedAssistantMessage({ content }: { content: string }) {

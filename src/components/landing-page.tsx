@@ -240,7 +240,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       <header
         className={[
-          "landing-intro landing-intro-delay-1 relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5",
+          "landing-intro landing-intro-delay-1 relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8",
           isIntroVisible ? "is-visible" : "",
         ].join(" ")}
       >
@@ -249,21 +249,21 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
           alt="Excelora"
           width={120}
           height={32}
-          className="h-8 w-auto select-none"
+          className="h-7 w-auto select-none sm:h-8"
           draggable={false}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={onSignIn}
-            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50"
+            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50 sm:px-4 sm:py-2 sm:text-sm"
           >
             Sign in
           </button>
           <button
             type="button"
             onClick={onGetStarted}
-            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800 sm:px-4 sm:py-2 sm:text-sm"
           >
             Get started
             <ChevronRightIcon className="h-3.5 w-3.5" />
@@ -274,7 +274,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
       {/* Hero */}
       <section
         className={[
-          "landing-intro landing-intro-delay-2 relative z-10 mx-auto w-full max-w-6xl px-6 pt-16 pb-20 md:pt-24",
+          "landing-intro landing-intro-delay-2 relative z-10 mx-auto w-full max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pt-16 sm:pb-20 md:pt-24 lg:px-8",
           isIntroVisible ? "is-visible" : "",
         ].join(" ")}
       >
@@ -282,52 +282,54 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
           <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-600">
             A Level Maths, refined
           </span>
-          <h1 className="mt-6 text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-zinc-900 md:text-6xl">
+          <h1 className="mt-5 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] text-zinc-900 sm:mt-6 sm:text-5xl md:text-6xl">
             Study deeper. Learn faster.
             <br />
             Built for focus.
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-600 md:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:mt-5 sm:text-base md:text-lg">
             Excelora is a calm study workspace pairing chapter notes, video walkthroughs,
             and Arthur — a quiet tutor that reads the same lesson you do and answers in depth.
           </p>
         </div>
 
         {/* Workspace preview */}
-        <div className="relative mx-auto mt-14 max-w-5xl">
-          <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.10)]">
+        <div className="relative mx-auto mt-10 max-w-5xl sm:mt-14">
+          <div className="overflow-hidden rounded-[22px] border border-zinc-200 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.10)] sm:rounded-[28px]">
             <div className="flex items-center gap-1.5 border-b border-zinc-200 bg-[var(--surface-sidebar)] px-4 py-3">
               <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
               <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
               <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
-              <span className="ml-3 text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+              <span className="ml-3 truncate text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
                 excelora · workspace
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)_300px]">
+            <div className="grid grid-cols-1 md:grid-cols-[190px_minmax(0,1fr)] lg:grid-cols-[210px_minmax(0,1fr)_300px]">
               <WorkspaceSidebarMock activeIndex={workspaceShowcaseIndex} />
               <HeroVideoPane showcaseItem={activeWorkspaceShowcase} />
-              <HeroArthurPane showcaseItem={activeWorkspaceShowcase} />
+              <div className="hidden lg:block">
+                <HeroArthurPane showcaseItem={activeWorkspaceShowcase} />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features — Notion-style grid of tinted cards */}
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
+      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <RevealOnScroll resetKey={revealCycle}>
           <div className="max-w-3xl">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Features
             </p>
-            <h2 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-[-0.02em] text-zinc-900 md:text-5xl">
+            <h2 className="mt-3 text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-zinc-900 sm:text-4xl md:text-5xl">
               Bring all your studying together.
             </h2>
           </div>
         </RevealOnScroll>
 
         <RevealOnScroll delay={120} resetKey={revealCycle}>
-          <div className="mt-12 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+          <div className="mt-10 grid grid-cols-1 items-stretch gap-4 sm:mt-12 sm:gap-5 md:grid-cols-2">
             <RevealOnScroll delay={40} resetKey={revealCycle}>
               <FeatureCard
                 className="h-full"
@@ -369,20 +371,20 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
       </section>
 
       {/* How it works — three connected steps with workspace surfaces */}
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
+      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <RevealOnScroll resetKey={revealCycle}>
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               How it works
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 md:text-4xl">
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl md:text-4xl">
               Three steps. One study loop.
             </h2>
           </div>
         </RevealOnScroll>
 
         <RevealOnScroll delay={120} resetKey={revealCycle}>
-          <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:mt-14 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
             <StepCard
               step={1}
               title="Open a subtopic"
@@ -406,87 +408,74 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
       </section>
 
       {/* Pricing */}
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-6 py-20">
+      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <RevealOnScroll resetKey={revealCycle}>
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               Pricing
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 md:text-4xl">
-              Start free. Upgrade when it clicks.
+            <h2 className="mt-2 text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-zinc-900 sm:text-4xl md:text-5xl">
+              Simple pricing. Real results.
             </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-zinc-600 md:text-base">
+              Start free with the full notes library. Upgrade for video walkthroughs,
+              Arthur and 1:1 tutoring when you are ready to go further.
+            </p>
           </div>
         </RevealOnScroll>
 
         <RevealOnScroll delay={120} resetKey={revealCycle}>
-          <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">
-            <article className="flex h-full flex-col rounded-[28px] border border-zinc-200 bg-white p-8 shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold tracking-tight text-zinc-900">Basic</h3>
-                <span className="rounded-full border border-zinc-200 bg-[var(--surface-sidebar)] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-600">
-                  Free
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-zinc-600">
-                Get the fundamentals — written notes for every subtopic.
-              </p>
-              <ul className="mt-6 flex-1 space-y-2.5 text-sm text-zinc-700">
-                {BASIC_PERKS.map((perk) => (
-                  <li key={perk} className="flex items-start gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-                    {perk}
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={onGetStarted}
-                className="mt-8 inline-flex w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-sm font-medium text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-50"
-              >
-                Create account
-              </button>
-            </article>
+          <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 items-stretch gap-5 sm:mt-14 md:grid-cols-2 md:gap-6">
+            <PricingCard
+              tone="light"
+              name="Basic"
+              price="£0"
+              cadence="free forever"
+              tagline="Every chapter, every subtopic — the fundamentals, on the house."
+              perks={BASIC_PERKS}
+              ctaLabel="Create free account"
+              onCtaClick={onGetStarted}
+              footnote="No credit card required."
+            />
+            <PricingCard
+              tone="dark"
+              name="Premium"
+              price="Coming soon"
+              cadence="early access"
+              tagline="Notes, video walkthroughs, Arthur and 1:1 tutor sessions, together."
+              perks={PREMIUM_PERKS}
+              ctaLabel="Join the Premium waitlist"
+              onCtaClick={onGetStarted}
+              featured
+              highlight="Most popular"
+              footnote="Cancel anytime · Student-friendly pricing."
+            />
+          </div>
+        </RevealOnScroll>
 
-            <article className="relative flex h-full flex-col overflow-hidden rounded-[28px] border border-zinc-900 bg-zinc-900 p-8 text-white shadow-[0_40px_100px_rgba(15,23,42,0.18)]">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.18),transparent_60%)]"
-              />
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold tracking-tight">Premium</h3>
-                <span className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]">
-                  Recommended
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-white/70">
-                Notes, video walkthroughs, Arthur, and 1:1 tutor sessions.
-              </p>
-              <ul className="mt-6 flex-1 space-y-2.5 text-sm text-white/90">
-                {PREMIUM_PERKS.map((perk) => (
-                  <li key={perk} className="flex items-start gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" />
-                    {perk}
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={onGetStarted}
-                className="mt-8 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-white bg-white px-5 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
-              >
-                Go premium
-                <ChevronRightIcon className="h-3.5 w-3.5" />
-              </button>
-            </article>
+        <RevealOnScroll delay={200} resetKey={revealCycle}>
+          <div className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center text-xs text-zinc-500">
+            <span className="inline-flex items-center gap-1.5">
+              <CheckDotIcon className="h-3.5 w-3.5 text-emerald-500" />
+              Cancel anytime
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckDotIcon className="h-3.5 w-3.5 text-emerald-500" />
+              Built by UK tutors
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckDotIcon className="h-3.5 w-3.5 text-emerald-500" />
+              GCSE & A-Level ready
+            </span>
           </div>
         </RevealOnScroll>
       </section>
 
       {/* Closing CTA */}
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24">
+      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
         <RevealOnScroll resetKey={revealCycle}>
-          <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-10 text-center shadow-[0_30px_80px_rgba(15,23,42,0.06)] md:p-14">
-            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-zinc-900 md:text-4xl">
+          <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white p-6 text-center shadow-[0_30px_80px_rgba(15,23,42,0.06)] sm:rounded-[28px] sm:p-10 md:p-14">
+            <h2 className="mx-auto max-w-2xl text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl md:text-4xl">
               Ready to find your flow?
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-600 md:text-base">
@@ -506,8 +495,8 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
 
       <RevealOnScroll delay={80} resetKey={revealCycle}>
         <footer className="relative z-10">
-          <div className="mx-auto w-full max-w-6xl px-6 pb-10">
-            <div className="rounded-[28px] border border-zinc-200/80 bg-white/75 px-7 py-7 shadow-[0_18px_50px_rgba(15,23,42,0.04)] backdrop-blur-sm md:px-8 md:py-8">
+          <div className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-10 lg:px-8">
+            <div className="rounded-[22px] border border-zinc-200/80 bg-white/75 px-5 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.04)] backdrop-blur-sm sm:rounded-[28px] sm:px-7 sm:py-7 md:px-8 md:py-8">
               <div className="flex flex-col gap-8">
                 <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-xl">
@@ -569,11 +558,13 @@ function RevealOnScroll({
   resetKey?: number;
 }) {
   const [isVisible, setIsVisible] = useState(false);
+  const [lastResetKey, setLastResetKey] = useState(resetKey);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  if (lastResetKey !== resetKey) {
+    setLastResetKey(resetKey);
     setIsVisible(false);
-  }, [resetKey]);
+  }
 
   useEffect(() => {
     const node = containerRef.current;
@@ -677,7 +668,7 @@ function StepCard({
 
 function HeroVideoPane({ showcaseItem }: { showcaseItem: WorkspaceShowcaseItem }) {
   return (
-    <div className="border-b border-zinc-200 p-6 md:border-b-0 md:border-r md:p-7">
+    <div className="border-b border-zinc-200 p-5 sm:p-6 md:border-b-0 md:p-7 lg:border-r">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
@@ -1013,14 +1004,177 @@ function StepProgressPreview() {
 }
 
 const BASIC_PERKS = [
-  "Full access to chapter notes",
+  "Full chapter notes, beautifully typeset",
   "PDF workbook for every subtopic",
   "Progress tracking across chapters",
+  "Works on phone, tablet and laptop",
 ];
 
 const PREMIUM_PERKS = [
   "Everything in Basic",
   "Video walkthroughs for every subtopic",
-  "Arthur, grounded in the same notes you read",
+  "Arthur — grounded in the same notes you read",
   "1:1 tutor sessions",
+  "Priority support from UK tutors",
 ];
+
+type PricingCardProps = {
+  tone: "light" | "dark";
+  name: string;
+  price: string;
+  cadence: string;
+  tagline: string;
+  perks: readonly string[];
+  ctaLabel: string;
+  onCtaClick: () => void;
+  featured?: boolean;
+  highlight?: string;
+  footnote?: string;
+};
+
+function PricingCard({
+  tone,
+  name,
+  price,
+  cadence,
+  tagline,
+  perks,
+  ctaLabel,
+  onCtaClick,
+  featured,
+  highlight,
+  footnote,
+}: PricingCardProps) {
+  const isDark = tone === "dark";
+
+  return (
+    <article
+      className={[
+        "relative flex h-full flex-col overflow-hidden rounded-[28px] border p-6 shadow-[0_20px_50px_rgba(15,23,42,0.05)] transition sm:p-8",
+        isDark
+          ? "border-zinc-900 bg-[linear-gradient(155deg,#121214_0%,#18181b_55%,#1f1f23_100%)] text-white shadow-[0_40px_100px_rgba(15,23,42,0.22)]"
+          : "border-zinc-200 bg-white text-zinc-900",
+        featured ? "md:-translate-y-2 md:scale-[1.01]" : "",
+      ].join(" ")}
+    >
+      {isDark ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.18),transparent_65%)]"
+        />
+      ) : null}
+
+      <div className="flex items-center justify-between gap-3">
+        <h3
+          className={[
+            "text-lg font-semibold tracking-tight",
+            isDark ? "text-white" : "text-zinc-900",
+          ].join(" ")}
+        >
+          {name}
+        </h3>
+        {highlight ? (
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]",
+              isDark
+                ? "border border-white/20 bg-white/10 text-white"
+                : "border border-zinc-200 bg-[var(--surface-sidebar)] text-zinc-600",
+            ].join(" ")}
+          >
+            {highlight}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex items-baseline gap-2">
+        <span
+          className={[
+            "text-4xl font-semibold leading-none tracking-[-0.03em] sm:text-[44px]",
+            isDark ? "text-white" : "text-zinc-900",
+          ].join(" ")}
+        >
+          {price}
+        </span>
+        <span
+          className={[
+            "text-sm",
+            isDark ? "text-white/60" : "text-zinc-500",
+          ].join(" ")}
+        >
+          {cadence}
+        </span>
+      </div>
+
+      <p
+        className={[
+          "mt-3 text-sm leading-6",
+          isDark ? "text-white/75" : "text-zinc-600",
+        ].join(" ")}
+      >
+        {tagline}
+      </p>
+
+      <div
+        className={[
+          "my-6 h-px w-full",
+          isDark ? "bg-white/10" : "bg-zinc-100",
+        ].join(" ")}
+      />
+
+      <ul className="flex-1 space-y-3 text-sm">
+        {perks.map((perk) => (
+          <li key={perk} className="flex items-start gap-2.5">
+            <CheckDotIcon
+              className={[
+                "mt-[2px] h-4 w-4 shrink-0",
+                isDark ? "text-emerald-300" : "text-emerald-500",
+              ].join(" ")}
+            />
+            <span className={isDark ? "text-white/90" : "text-zinc-700"}>{perk}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        onClick={onCtaClick}
+        className={[
+          "mt-8 inline-flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-3 text-sm font-medium transition",
+          isDark
+            ? "bg-white text-zinc-900 hover:bg-zinc-100"
+            : "border border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800",
+        ].join(" ")}
+      >
+        {ctaLabel}
+        <ChevronRightIcon className="h-3.5 w-3.5" />
+      </button>
+
+      {footnote ? (
+        <p
+          className={[
+            "mt-3 text-center text-[11px]",
+            isDark ? "text-white/50" : "text-zinc-500",
+          ].join(" ")}
+        >
+          {footnote}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function CheckDotIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={className}>
+      <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="m6.5 10.3 2.4 2.4 4.6-4.9"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
