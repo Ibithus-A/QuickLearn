@@ -56,6 +56,8 @@ export default function HomePage() {
     currentUser: effectiveCurrentUser,
     targetStudentId: progressStudentId,
   });
+  const workspaceTopicProgress =
+    effectiveCurrentUser?.role === "student" ? topicProgress : undefined;
 
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
     setAuthenticatedUser(account);
@@ -177,7 +179,7 @@ export default function HomePage() {
               <aside
                 id="flowstate-sidebar"
                 className={[
-                  "absolute inset-y-0 left-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  "absolute inset-y-0 left-0 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isSidebarAutoOpen ? "translate-x-0" : "-translate-x-full",
                 ].join(" ")}
                 style={{ width: `min(${sidebarWidth}px, 88vw)` }}
@@ -194,7 +196,7 @@ export default function HomePage() {
                   onRequestClose={() => setIsSidebarAutoOpen(false)}
                   role={effectiveCurrentUser.role}
                   viewerProfile={viewerProfile}
-                  topicProgress={topicProgress}
+                  topicProgress={workspaceTopicProgress}
                 />
                 <div
                   className="absolute inset-y-0 right-0 hidden w-2 cursor-col-resize lg:block"
@@ -218,7 +220,7 @@ export default function HomePage() {
                 viewerProfile={viewerProfile}
                 sidebarInsetPx={isSidebarAutoOpen ? sidebarWidth : 0}
                 tutorialSurface={isTutorialOpen ? tutorialSurface : null}
-                topicProgress={topicProgress}
+                topicProgress={workspaceTopicProgress}
               />
             </div>
           </div>

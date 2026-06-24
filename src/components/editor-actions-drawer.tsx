@@ -794,7 +794,7 @@ export function EditorActionsDrawer({
           <aside
             className={[
               "pointer-events-auto absolute inset-y-0 right-0 h-full min-h-full w-[min(460px,46vw)] overflow-hidden border-l border-zinc-200 bg-[var(--surface-sidebar)]",
-              "transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
               isAssistantPanelOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
             ].join(" ")}
           >
@@ -824,7 +824,7 @@ export function EditorActionsDrawer({
       {!canUseHoverAssistant ? (
         <div
           className={[
-            "fixed inset-0 z-50 transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "fixed inset-0 z-50 transition-opacity duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
             isMobileOpen || forceOpen
               ? "pointer-events-auto opacity-100"
               : "pointer-events-none opacity-0",
@@ -834,7 +834,7 @@ export function EditorActionsDrawer({
             type="button"
             onClick={() => onMobileOpenChange?.(false)}
             className={[
-              "absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "absolute inset-0 bg-black/45 transition-opacity duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
               isMobileOpen || forceOpen ? "opacity-100" : "opacity-0",
             ].join(" ")}
             aria-label="Close AI assistant"
@@ -843,7 +843,7 @@ export function EditorActionsDrawer({
             data-tour="ai-assistant"
             className={[
               "absolute inset-x-0 bottom-0 top-12 overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-[var(--surface-sidebar)] shadow-[0_-28px_70px_rgba(9,9,11,0.22)] sm:top-16",
-              "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+              "transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
               isMobileOpen || forceOpen
                 ? "translate-y-0 opacity-100"
                 : "translate-y-full opacity-0",

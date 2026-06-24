@@ -193,6 +193,13 @@ export function DashboardHome({
   );
   const studentLessonItems = useMemo(() => {
     const orderedPages: FlowNode[] = [];
+    const activeAccess = {
+      plan: activeAccessPlan,
+      taggedChapterTitle: activeStudentMilestone ?? null,
+      customUnlockedChapterTitles: accessibleChapterTitles.filter(
+        (chapterTitle) => chapterTitle !== CHAPTER_ONE_TITLE,
+      ),
+    };
 
     const walk = (nodeId: string) => {
       const node = state.nodes[nodeId];
@@ -200,13 +207,7 @@ export function DashboardHome({
 
       if (
         node.kind === "page" &&
-        canAccessNode(state, node.id, {
-          plan: activeAccessPlan,
-          taggedChapterTitle: activeStudentMilestone ?? null,
-          customUnlockedChapterTitles: accessibleChapterTitles.filter(
-            (chapterTitle) => chapterTitle !== CHAPTER_ONE_TITLE,
-          ),
-        }) &&
+        canAccessNode(state, node.id, activeAccess) &&
         getLessonChapterContext(state, node.id)
       ) {
         orderedPages.push(node);
@@ -507,7 +508,7 @@ export function DashboardHome({
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-100">
               <div
-                className="h-full rounded-full bg-zinc-900 transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className="h-full rounded-full bg-zinc-900 transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{ width: `${completedPercentage}%` }}
               />
             </div>
@@ -612,7 +613,7 @@ export function DashboardHome({
                     <span
                       aria-hidden="true"
                       className={[
-                        "pointer-events-none absolute bottom-0.5 left-0.5 top-0.5 w-[calc(50%-2px)] rounded-full bg-white shadow-sm transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        "pointer-events-none absolute bottom-0.5 left-0.5 top-0.5 w-[calc(50%-2px)] rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
                         selectedStudentPlan === "premium" ? "translate-x-full" : "translate-x-0",
                       ].join(" ")}
                     />

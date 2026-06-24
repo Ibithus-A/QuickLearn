@@ -196,7 +196,7 @@ export function TutorialShowcase({
       aria-modal="true"
       aria-labelledby="tutorial-showcase-title"
     >
-      <div className="absolute inset-0 bg-zinc-950/28 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 bg-zinc-950/28" />
       {activeSpotlightRect ? (
         <div
           aria-hidden="true"
@@ -243,7 +243,7 @@ export function TutorialShowcase({
 
           <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-zinc-100">
             <div
-              className="h-full rounded-full bg-zinc-900 transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              className="h-full rounded-full bg-zinc-900 transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>

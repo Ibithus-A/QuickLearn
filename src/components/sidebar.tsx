@@ -57,8 +57,9 @@ export function Sidebar({
     useFlowState();
   const isStudent = role === "student";
   const canManage = !isStudent;
-  const lessonProgress = topicProgress?.lessonProgress ?? {};
-  const currentSubtopicId = topicProgress?.currentSubtopicId ?? null;
+  const workspaceTopicProgress = isStudent ? topicProgress : undefined;
+  const lessonProgress = workspaceTopicProgress?.lessonProgress ?? {};
+  const currentSubtopicId = workspaceTopicProgress?.currentSubtopicId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const lastStudentAccessKeyRef = useRef<string | null>(null);
 

@@ -1,13 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { canAccessNode, getLockedChapterMessage } from "@/lib/access";
-import { EditorActionsDrawer } from "@/components/editor-actions-drawer";
 import { FolderIcon } from "@/components/icons";
 import type { TutorialSurface } from "@/components/tutorial-showcase";
 import { useFlowState } from "@/context/flowstate-context";
 import { END_OF_TOPIC_ASSESSMENT_TITLE } from "@/lib/seed";
-import { getDocumentProxy } from "unpdf";
 import {
   getDefaultTitle,
   getLessonChapterContext,
@@ -25,6 +24,11 @@ import {
   useRef,
   useState,
 } from "react";
+
+const EditorActionsDrawer = dynamic(
+  () => import("@/components/editor-actions-drawer").then((mod) => mod.EditorActionsDrawer),
+  { ssr: false, loading: () => null },
+);
 
 type EditorPaneProps = {
   role: "tutor" | "student";
@@ -139,8 +143,9 @@ export function EditorPane({
   const [mobileAssistantNodeId, setMobileAssistantNodeId] = useState<string | null>(null);
   const [surfaceTransitionMode, setSurfaceTransitionMode] =
     useState<SurfaceTransitionMode>("fade");
-  const lessonProgress = topicProgress?.lessonProgress ?? {};
-  const currentSubtopicId = topicProgress?.currentSubtopicId ?? null;
+  const workspaceTopicProgress = role === "student" ? topicProgress : undefined;
+  const lessonProgress = workspaceTopicProgress?.lessonProgress ?? {};
+  const currentSubtopicId = workspaceTopicProgress?.currentSubtopicId ?? null;
   const [lessonSurface, setLessonSurface] = useState<LessonSurfaceState>({
     nodeId: null,
     view: "notes",
@@ -157,7 +162,7 @@ export function EditorPane({
     ? getNodeLockInfo(state, selectedNode.id)
     : DEFAULT_LOCK_INFO;
   const isStudent = role === "student";
-  const canChangeTopicProgress = Boolean(topicProgress?.canMutate);
+  const canChangeTopicProgress = Boolean(workspaceTopicProgress?.canMutate);
   const canUseAssistant = role === "tutor" || viewerProfile?.plan === "premium";
   const isAccessBlocked =
     isStudent && selectedNode
@@ -259,11 +264,11 @@ export function EditorPane({
     if (!metadata) return;
 
     if (lessonProgress[selectedNode.id]) {
-      void topicProgress?.markTopicTodo(metadata);
+      void workspaceTopicProgress?.markTopicTodo(metadata);
       return;
     }
 
-    void topicProgress?.markTopicCompleted(metadata);
+    void workspaceTopicProgress?.markTopicCompleted(metadata);
   };
 
   const setSelectedSubtopicAsCurrent = () => {
@@ -271,7 +276,7 @@ export function EditorPane({
 
     const metadata = selectedTopicMetadata();
     if (!metadata) return;
-    void topicProgress?.setCurrentTopic(metadata);
+    void workspaceTopicProgress?.setCurrentTopic(metadata);
   };
 
   const nextLessonActionId = lessonContext?.nextLessonId ?? lessonContext?.assessmentId ?? null;
@@ -295,6 +300,10 @@ export function EditorPane({
     !!selectedId && lessonSurfaceExit?.nodeId === selectedId;
   const pdfZoom =
     lessonSurface.nodeId === selectedId ? lessonSurface.pdfZoom : 100;
+  const shouldFitPdfToPage =
+    lessonSurface.nodeId !== selectedId ||
+    tutorialSurface === "notes" ||
+    tutorialSurface === "ai";
 
   const showLessonSurface = (
     nodeId: string | null,
@@ -322,7 +331,7 @@ export function EditorPane({
       setLessonSurface({ nodeId, view, pdfZoom: zoom });
       setLessonSurfaceExit(null);
       lessonSurfaceExitTimerRef.current = null;
-    }, 180);
+    }, 80);
   };
 
   useEffect(() => {
@@ -367,10 +376,10 @@ export function EditorPane({
 
     revealNode(tutorialLessonId);
     const frame = window.requestAnimationFrame(() => {
-      setLessonSurface((current) => ({
+      setLessonSurface(() => ({
         nodeId: tutorialLessonId,
         view: tutorialSurface === "video" ? "video" : "notes",
-        pdfZoom: current.nodeId === tutorialLessonId ? current.pdfZoom : 100,
+        pdfZoom: 100,
       }));
       if (tutorialSurface === "ai") {
         setMobileAssistantNodeId(tutorialLessonId);
@@ -430,7 +439,7 @@ export function EditorPane({
     <section className="relative flex h-full min-h-0 overflow-hidden bg-[var(--surface-panel)]">
       <div
         className={[
-          "min-w-0 flex-1 transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "min-w-0 flex-1 transition-[padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
         ].join(" ")}
         style={editorShellStyle}
       >
@@ -649,13 +658,14 @@ export function EditorPane({
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
                             ref={pdfRef}
-                            key={`${selectedNode.id}-${pdfZoom}`}
+                            key={selectedNode.id}
                             pdfUrl={resolveSubtopicPdfUrl(
                               selectedNode.title,
                               lessonContext?.subjectTitle,
                             )}
                             zoom={pdfZoom}
-                            autoFitDefault={lessonSurface.nodeId !== selectedId}
+                            autoFitDefault={shouldFitPdfToPage}
+                            autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
                             onAutoFitZoom={(nextZoom) =>
                               setLessonSurface({
                                 nodeId: selectedId,
@@ -724,13 +734,14 @@ export function EditorPane({
                       {isAssessmentPage ? (
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
-                            key={`${selectedNode.id}-${pdfZoom}`}
+                            key={selectedNode.id}
                             pdfUrl={resolveAssessmentPdfUrl(
                               lessonContext.chapterTitle,
                               lessonContext.subjectTitle,
                             )}
                             zoom={pdfZoom}
-                            autoFitDefault={lessonSurface.nodeId !== selectedId}
+                            autoFitDefault={shouldFitPdfToPage}
+                            autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
                             onAutoFitZoom={(nextZoom) =>
                               setLessonSurface({
                                 nodeId: selectedId,
@@ -753,7 +764,7 @@ export function EditorPane({
                             if (isLessonWatched || !selectedNode) return;
                             const metadata = selectedTopicMetadata();
                             if (!metadata) return;
-                            void topicProgress?.markTopicCompleted(metadata);
+                            void workspaceTopicProgress?.markTopicCompleted(metadata);
                           }}
                         />
                       )}
@@ -918,13 +929,14 @@ type PdfCanvasDocumentProps = {
   pdfUrl: string;
   zoom: number;
   autoFitDefault?: boolean;
+  autoFitKey?: string;
   onAutoFitZoom?: (zoom: number) => void;
   emptyTitle: string;
   emptyBody: string;
 };
 
 const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(function PdfCanvasDocument(
-  { pdfUrl, zoom, autoFitDefault = false, onAutoFitZoom, emptyTitle, emptyBody },
+  { pdfUrl, zoom, autoFitDefault = false, autoFitKey, onAutoFitZoom, emptyTitle, emptyBody },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -934,7 +946,6 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
   const [hasError, setHasError] = useState(false);
   const firstPageAspectRef = useRef<number | null>(null);
   const [firstPageAspect, setFirstPageAspect] = useState<number | null>(null);
-  const autoFitAppliedKeyRef = useRef<string | null>(null);
   const panDirectionRef = useRef<"left" | "right" | null>(null);
   const panVelocityRef = useRef(0);
   const panFrameRef = useRef<number | null>(null);
@@ -1010,15 +1021,20 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
   useEffect(() => {
     if (!autoFitDefault || zoom !== 100 || !firstPageAspect) return;
 
-    const autoFitKey = `${pdfUrl}:${renderWidth}:${firstPageAspect}`;
-    if (autoFitAppliedKeyRef.current === autoFitKey) return;
-
     const fitZoom = computeFitZoom(firstPageAspect);
     if (!fitZoom || Math.abs(fitZoom - zoom) < 2) return;
 
-    autoFitAppliedKeyRef.current = autoFitKey;
     onAutoFitZoom?.(fitZoom);
-  }, [autoFitDefault, computeFitZoom, firstPageAspect, onAutoFitZoom, pdfUrl, renderWidth, zoom]);
+  }, [
+    autoFitDefault,
+    autoFitKey,
+    computeFitZoom,
+    firstPageAspect,
+    onAutoFitZoom,
+    pdfUrl,
+    renderWidth,
+    zoom,
+  ]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -1044,6 +1060,7 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
           pdfBufferCache.set(pdfUrl, buffer);
         }
 
+        const { getDocumentProxy } = await import("unpdf");
         const pdf = await getDocumentProxy(buffer.slice());
         const zoomScale = Math.max(0.5, zoom / 100);
         const devicePixelRatio =
@@ -1356,7 +1373,7 @@ function LessonVideoPlayer({
           preload="metadata"
           poster={posterUrl}
           className={[
-            "block aspect-video w-full bg-black transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "block aspect-video w-full bg-black transition-opacity duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
             isVideoReady ? "opacity-100" : "opacity-0",
           ].join(" ")}
           onClick={() => {

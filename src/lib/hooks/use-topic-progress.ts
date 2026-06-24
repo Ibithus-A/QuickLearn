@@ -76,6 +76,18 @@ function toPlaceholderRow(
   };
 }
 
+function mergeRowsByTopicId(rows: TopicProgressRow[]): TopicProgressRow[] {
+  const rowsByTopicId = new Map<string, TopicProgressRow>();
+
+  for (const row of rows) {
+    rowsByTopicId.set(row.topic_id, row);
+  }
+
+  return Array.from(rowsByTopicId.values()).sort((left, right) =>
+    right.updated_at.localeCompare(left.updated_at),
+  );
+}
+
 function metadataToRpcArgs(metadata: TopicProgressMetadata) {
   return {
     p_topic_id: metadata.topicId,
@@ -92,12 +104,14 @@ export function useTopicProgress({
   const [rows, setRows] = useState<TopicProgressRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const currentUserId = currentUser?.id ?? null;
+  const currentUserRole = currentUser?.role ?? null;
   const canMutate = Boolean(
-    currentUser && currentUser.role === "student" && targetStudentId === currentUser.id,
+    currentUserId && currentUserRole === "student" && targetStudentId === currentUserId,
   );
 
   const refresh = useCallback(async () => {
-    if (!currentUser || !targetStudentId) {
+    if (!currentUserId || !targetStudentId) {
       setRows([]);
       setError("");
       setIsLoading(false);
@@ -118,14 +132,18 @@ export function useTopicProgress({
         .order("updated_at", { ascending: false });
 
       if (progressError) throw progressError;
-      setRows((data ?? []).map(normalizeRow).filter((row): row is TopicProgressRow => Boolean(row)));
+      setRows(
+        mergeRowsByTopicId(
+          (data ?? []).map(normalizeRow).filter((row): row is TopicProgressRow => Boolean(row)),
+        ),
+      );
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Unable to load topic progress.";
       setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, targetStudentId]);
+  }, [currentUserId, targetStudentId]);
 
   useEffect(() => {
     void refresh();
@@ -162,7 +180,6 @@ export function useTopicProgress({
         const supabase = createClient();
         const { error: rpcError } = await supabase.rpc(rpcName, metadataToRpcArgs(metadata));
         if (rpcError) throw rpcError;
-        await refresh();
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "Unable to save topic progress.";
         setError(message);
@@ -200,7 +217,7 @@ export function useTopicProgress({
   );
 
   return useMemo(() => {
-    if (!currentUser || !targetStudentId) return EMPTY_CONTROLLER;
+    if (!currentUserId || !targetStudentId) return EMPTY_CONTROLLER;
 
     const rowsByTopicId = Object.fromEntries(rows.map((row) => [row.topic_id, row]));
     const lessonProgress = Object.fromEntries(
@@ -224,7 +241,7 @@ export function useTopicProgress({
     };
   }, [
     canMutate,
-    currentUser,
+    currentUserId,
     error,
     isLoading,
     markTopicCompleted,
