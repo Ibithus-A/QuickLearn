@@ -255,6 +255,12 @@ export function DashboardHome({
   ]);
   const visibleProgressItems =
     role === "student" || selectedStudent ? studentLessonItems : chapterProgressItems;
+  const progressOwnerLabel =
+    role === "tutor" && selectedStudent
+      ? `Viewing ${selectedStudent.name}'s progress`
+      : role === "student"
+        ? "Viewing your progress"
+        : "";
   const accessibleTopicCount = Math.max(
     role === "student" || selectedStudent
       ? visibleProgressItems.completed.length +
@@ -391,16 +397,34 @@ export function DashboardHome({
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                 Course Progress
               </p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
-                A Level Maths
-              </h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
+                  A Level Maths
+                </h2>
+                {progressOwnerLabel ? (
+                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+                    {progressOwnerLabel}
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
                 {role === "tutor"
                   ? selectedStudent
-                    ? `Tracking ${selectedStudent.name}'s current access and chapter position.`
+                    ? `This read-only overview shows ${selectedStudent.name}'s completed, current, and available subtopics.`
                     : "Select a student to view their current course position."
                   : "Your current course position and available topics are shown here."}
               </p>
+              {topicProgress?.isLoading ? (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-400" />
+                  Loading progress
+                </div>
+              ) : null}
+              {topicProgress?.error ? (
+                <div className="mt-3 max-w-2xl rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  Progress could not be loaded. {topicProgress.error}
+                </div>
+              ) : null}
             </div>
           </div>
 
