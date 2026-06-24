@@ -4,7 +4,6 @@ import {
   ChevronRightIcon,
   FolderIcon,
   FolderPlusIcon,
-  PageIcon,
   PlusIcon,
   TrashIcon,
 } from "@/components/icons";
@@ -21,6 +20,8 @@ type SidebarNodeProps = {
   canManage?: boolean;
   canViewNode?: (id: string) => boolean;
   isLockedNode?: (id: string) => boolean;
+  isPageComplete?: (id: string) => boolean;
+  isPageCurrent?: (id: string) => boolean;
 };
 
 export function SidebarNode({
@@ -29,6 +30,8 @@ export function SidebarNode({
   canManage = true,
   canViewNode,
   isLockedNode,
+  isPageComplete,
+  isPageCurrent,
 }: SidebarNodeProps) {
   const {
     state,
@@ -54,6 +57,8 @@ export function SidebarNode({
   const hasChildren = node.childrenIds.length > 0;
   const indentPx = 8 + depth * 13;
   const isLocked = isLockedNode?.(node.id) ?? false;
+  const isComplete = node.kind === "page" ? (isPageComplete?.(node.id) ?? false) : false;
+  const isCurrent = node.kind === "page" ? (isPageCurrent?.(node.id) ?? false) : false;
 
   const commitTitle = () => {
     const nextTitle = draftTitle.trim() || getDefaultTitle(node.kind);
@@ -157,7 +162,19 @@ export function SidebarNode({
           {node.kind === "folder" ? (
             <FolderIcon className="h-4 w-4 shrink-0 text-zinc-500" />
           ) : (
-            <PageIcon className="h-4 w-4 shrink-0 text-zinc-500" />
+            <span
+              aria-hidden="true"
+              className={[
+                "h-3.5 w-3.5 shrink-0 rounded-full border-2 transition-colors duration-200",
+                isCurrent
+                  ? "border-amber-500 bg-amber-50"
+                  : isComplete
+                    ? "border-emerald-500 bg-emerald-50"
+                    : isLocked
+                    ? "border-zinc-300 bg-zinc-100"
+                    : "border-zinc-300 bg-white",
+              ].join(" ")}
+            />
           )}
           {isEditing ? (
             <input
@@ -271,6 +288,8 @@ export function SidebarNode({
                 canManage={canManage}
                 canViewNode={canViewNode}
                 isLockedNode={isLockedNode}
+                isPageComplete={isPageComplete}
+                isPageCurrent={isPageCurrent}
               />
             ))}
         </div>

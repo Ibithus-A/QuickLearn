@@ -698,6 +698,8 @@ type EditorActionsDrawerProps = {
   pageContent: string;
   pageNodeId: string;
   workspaceContext: string;
+  canUseAssistant: boolean;
+  forceOpen?: boolean;
   onHoverChange?: (isHovered: boolean) => void;
   isMobileOpen?: boolean;
   onMobileOpenChange?: (isOpen: boolean) => void;
@@ -709,6 +711,8 @@ export function EditorActionsDrawer({
   pageContent,
   pageNodeId,
   workspaceContext,
+  canUseAssistant,
+  forceOpen = false,
   onHoverChange,
   isMobileOpen = false,
   onMobileOpenChange,
@@ -762,6 +766,7 @@ export function EditorActionsDrawer({
     setIsHoverAssistantOpen(true);
     onHoverChange?.(true);
   };
+  const isAssistantPanelOpen = forceOpen || isHoverAssistantOpen;
 
   const closeHoverAssistant = () => {
     if (closeHoverAssistantTimerRef.current) {
@@ -777,10 +782,11 @@ export function EditorActionsDrawer({
 
   return (
     <>
-      {canUseHoverAssistant ? (
+      {canUseHoverAssistant || forceOpen ? (
         <div
           onMouseEnter={openHoverAssistant}
           onMouseLeave={closeHoverAssistant}
+          data-tour="ai-assistant"
           className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[min(460px,46vw)] md:block"
         >
           <div className="pointer-events-auto absolute inset-y-0 right-0 w-8 md:w-10" />
@@ -789,7 +795,7 @@ export function EditorActionsDrawer({
             className={[
               "pointer-events-auto absolute inset-y-0 right-0 h-full min-h-full w-[min(460px,46vw)] overflow-hidden border-l border-zinc-200 bg-[var(--surface-sidebar)]",
               "transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              isHoverAssistantOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
+              isAssistantPanelOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
             ].join(" ")}
           >
             <DrawerContent
@@ -798,12 +804,13 @@ export function EditorActionsDrawer({
               pageContent={pageContent}
               pageNodeId={pageNodeId}
               workspaceContext={workspaceContext}
+              canUseAssistant={canUseAssistant}
             />
           </aside>
         </div>
       ) : null}
 
-      {!canUseHoverAssistant ? (
+      {!canUseHoverAssistant && !forceOpen ? (
         <button
           type="button"
           onClick={() => onMobileOpenChange?.(true)}
@@ -818,7 +825,9 @@ export function EditorActionsDrawer({
         <div
           className={[
             "fixed inset-0 z-50 transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-            isMobileOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+            isMobileOpen || forceOpen
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0",
           ].join(" ")}
         >
           <button
@@ -826,15 +835,18 @@ export function EditorActionsDrawer({
             onClick={() => onMobileOpenChange?.(false)}
             className={[
               "absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-              isMobileOpen ? "opacity-100" : "opacity-0",
+              isMobileOpen || forceOpen ? "opacity-100" : "opacity-0",
             ].join(" ")}
             aria-label="Close AI assistant"
           />
           <aside
+            data-tour="ai-assistant"
             className={[
               "absolute inset-x-0 bottom-0 top-12 overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-[var(--surface-sidebar)] shadow-[0_-28px_70px_rgba(9,9,11,0.22)] sm:top-16",
               "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-              isMobileOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0",
+              isMobileOpen || forceOpen
+                ? "translate-y-0 opacity-100"
+                : "translate-y-full opacity-0",
             ].join(" ")}
           >
             <div className="flex h-full min-h-0 flex-col">
@@ -863,6 +875,7 @@ export function EditorActionsDrawer({
                 pageContent={pageContent}
                 pageNodeId={pageNodeId}
                 workspaceContext={workspaceContext}
+                canUseAssistant={canUseAssistant}
               />
             </div>
           </aside>
@@ -878,12 +891,14 @@ function DrawerContent({
   pageContent,
   pageNodeId,
   workspaceContext,
+  canUseAssistant,
 }: {
   pageTitle: string;
   pdfTitle?: string;
   pageContent: string;
   pageNodeId: string;
   workspaceContext: string;
+  canUseAssistant: boolean;
 }) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -929,12 +944,16 @@ function DrawerContent({
   };
 
   const helperText = useMemo(() => {
+    if (!canUseAssistant) {
+      return "Arthur is available on Premium. This is where AI support appears beside lesson notes and videos.";
+    }
+
     if (pageContent.trim()) {
       return "Arthur can explain this page, summarize it, or help you revise from the notes.";
     }
 
     return "This page is blank, so Arthur will work from your prompt alone.";
-  }, [pageContent]);
+  }, [canUseAssistant, pageContent]);
 
   const serializeComposer = (): string => {
     const root = composerRef.current;
@@ -971,6 +990,7 @@ function DrawerContent({
   };
 
   const sendMessage = async () => {
+    if (!canUseAssistant) return;
     const content = serializeComposer().replace(/\s+$/, "").trim();
     if (!content || isSending) return;
 
@@ -1017,6 +1037,7 @@ function DrawerContent({
   };
 
   const handleKeyDown = async (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!canUseAssistant) return;
     if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     await sendMessage();
@@ -1212,8 +1233,15 @@ function DrawerContent({
             </p>
             <p className="mt-1 text-xs text-zinc-500">{pageTitle}</p>
           </div>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-emerald-700">
-            Live
+          <span
+            className={[
+              "rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.08em]",
+              canUseAssistant
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-zinc-200 bg-zinc-100 text-zinc-600",
+            ].join(" ")}
+          >
+            {canUseAssistant ? "Live" : "Locked"}
           </span>
         </div>
       </header>
@@ -1225,6 +1253,11 @@ function DrawerContent({
               <div className="mx-auto max-w-[260px] pt-6 text-center">
                 <p className="text-sm font-medium text-zinc-700">Arthur is ready</p>
                 <p className="mt-2 text-sm text-zinc-500">{helperText}</p>
+                {!canUseAssistant ? (
+                  <p className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-600">
+                    AI chat is disabled on Basic.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1285,11 +1318,12 @@ function DrawerContent({
                 <div className="relative min-h-[28px] w-full flex-1">
                   <div
                     ref={composerRef}
-                    contentEditable
+                    contentEditable={canUseAssistant}
                     suppressContentEditableWarning
                     role="textbox"
                     aria-multiline="true"
                     aria-label="Ask Arthur anything"
+                    aria-disabled={!canUseAssistant}
                     onInput={updateIsEmpty}
                     onBlur={rememberSelection}
                     onClick={handleComposerClick}
@@ -1298,7 +1332,7 @@ function DrawerContent({
                   />
                   {isEmpty ? (
                     <span className="pointer-events-none absolute left-[0.375rem] top-1 text-sm leading-6 text-zinc-500">
-                      Ask Arthur anything.
+                      {canUseAssistant ? "Ask Arthur anything." : "AI is locked on Basic."}
                     </span>
                   ) : null}
                 </div>
@@ -1306,11 +1340,13 @@ function DrawerContent({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => setIsMathsOpen((current) => !current)}
+                  disabled={!canUseAssistant}
                   className={[
                     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border transition",
                     isMathsOpen
                       ? "border-zinc-900 bg-zinc-900 text-white"
                       : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100",
+                    !canUseAssistant ? "cursor-not-allowed opacity-45" : "",
                   ].join(" ")}
                   aria-expanded={isMathsOpen}
                   aria-label="Toggle maths symbols"
@@ -1322,7 +1358,7 @@ function DrawerContent({
                   onClick={() => {
                     void sendMessage();
                   }}
-                  disabled={isEmpty || isSending}
+                  disabled={!canUseAssistant || isEmpty || isSending}
                   aria-label="Send message"
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-zinc-900 text-white shadow-[0_6px_16px_rgba(9,9,11,0.16)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none"
                 >

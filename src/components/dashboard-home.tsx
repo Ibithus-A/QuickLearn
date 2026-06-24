@@ -7,16 +7,21 @@ import {
   TrashIcon,
   UnlockIcon,
 } from "@/components/icons";
-import { CHAPTER_ONE_TITLE } from "@/lib/access";
+import { useFlowState } from "@/context/flowstate-context";
+import { canAccessNode, CHAPTER_ONE_TITLE } from "@/lib/access";
 import { A_LEVEL_MATHS_SUBJECTS } from "@/lib/seed";
+import { getLessonChapterContext } from "@/lib/tree-utils";
 import type { UserAccessProfile, UserPlan, UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
+import type { FlowNode } from "@/types/flowstate";
+import type { TopicProgressController } from "@/types/topic-progress";
 import { useMemo, useState } from "react";
 
 type DashboardHomeProps = {
   name: string;
   role: UserRole;
   onOpenWorkspace: () => void;
+  onStartTutorial: () => void;
   onSignOut: () => void;
   onSwitchAccount: () => void;
   stats: StudentDailyStats;
@@ -26,6 +31,7 @@ type DashboardHomeProps = {
   selectedStudent?: UserAccessProfile | null;
   selectedStudentId?: string;
   selectedStudentPlan?: UserPlan;
+  activeStudentMilestone?: string | null;
   selectedStudentMilestone?: string | null;
   chapterTagsByTitle?: Record<string, Array<{ id: string; name: string; email: string }>>;
   accessibleChapterTitles?: string[];
@@ -34,12 +40,32 @@ type DashboardHomeProps = {
   onSetMilestoneChapter?: (chapterTitle: string) => Promise<void>;
   onToggleChapter?: (chapterTitle: string) => Promise<void>;
   onDeleteStudent?: () => Promise<{ ok: boolean; error?: string }>;
+  topicProgress?: TopicProgressController;
 };
+
+type DashboardTopicItem = {
+  id: string | null;
+  title: string;
+  meta: string;
+  isCurrent?: boolean;
+  isComplete?: boolean;
+};
+
+type DashboardLessonTopicItem = {
+  id: string;
+  title: string;
+  meta: string;
+  isComplete: boolean;
+  isCurrent: boolean;
+};
+
+const EMPTY_LESSON_PROGRESS: Record<string, boolean> = {};
 
 export function DashboardHome({
   name,
   role,
   onOpenWorkspace,
+  onStartTutorial,
   onSignOut,
   onSwitchAccount,
   currentPlan = "basic",
@@ -48,6 +74,7 @@ export function DashboardHome({
   selectedStudent,
   selectedStudentId,
   selectedStudentPlan = "basic",
+  activeStudentMilestone,
   selectedStudentMilestone,
   chapterTagsByTitle = {},
   accessibleChapterTitles = [],
@@ -56,7 +83,11 @@ export function DashboardHome({
   onSetMilestoneChapter,
   onToggleChapter,
   onDeleteStudent,
+  topicProgress,
 }: DashboardHomeProps) {
+  const { state, revealNode } = useFlowState();
+  const lessonProgress = topicProgress?.lessonProgress ?? EMPTY_LESSON_PROGRESS;
+  const currentSubtopicId = topicProgress?.currentSubtopicId ?? null;
   const [studentSearch, setStudentSearch] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDeletingStudent, setIsDeletingStudent] = useState(false);
@@ -101,6 +132,178 @@ export function DashboardHome({
           chapterTitle === CHAPTER_ONE_TITLE || accessibleChapterTitles.includes(chapterTitle),
       ).length
     : 0;
+  const activeAccessPlan = role === "tutor" ? selectedStudentPlan : currentPlan;
+  const accessibleChapterSet = useMemo(
+    () => new Set(accessibleChapterTitles),
+    [accessibleChapterTitles],
+  );
+  const milestoneTitle =
+    activeStudentMilestone && chapterTitleSet.has(activeStudentMilestone)
+      ? activeStudentMilestone
+      : accessibleChapterTitles[0] ?? CHAPTER_ONE_TITLE;
+  const milestoneIndex = chapterTitles.findIndex((title) => title === milestoneTitle);
+  const progressGroups = useMemo(() => {
+    const completed = chapterTitles.filter(
+      (chapterTitle, index) =>
+        accessibleChapterSet.has(chapterTitle) && milestoneIndex > 0 && index < milestoneIndex,
+    );
+    const ongoing =
+      milestoneTitle && accessibleChapterSet.has(milestoneTitle) ? [milestoneTitle] : [];
+    const occupiedTitles = new Set([...completed, ...ongoing]);
+    const toDo = chapterTitles.filter(
+      (chapterTitle) => accessibleChapterSet.has(chapterTitle) && !occupiedTitles.has(chapterTitle),
+    );
+
+    return { completed, ongoing, toDo };
+  }, [accessibleChapterSet, chapterTitles, milestoneIndex, milestoneTitle]);
+  const chapterProgressItems = useMemo(
+    () => ({
+      completed: progressGroups.completed.map((chapterTitle) => ({
+        id: null,
+        title: chapterTitle,
+        meta:
+          A_LEVEL_MATHS_SUBJECTS.find((subject) =>
+            subject.chapters.some((chapter) => chapter.title === chapterTitle),
+          )?.title ?? "A Level Maths",
+        isComplete: false,
+        isCurrent: false,
+      })),
+      ongoing: progressGroups.ongoing.map((chapterTitle) => ({
+        id: null,
+        title: chapterTitle,
+        meta:
+          A_LEVEL_MATHS_SUBJECTS.find((subject) =>
+            subject.chapters.some((chapter) => chapter.title === chapterTitle),
+          )?.title ?? "A Level Maths",
+        isComplete: false,
+        isCurrent: false,
+      })),
+      toDo: progressGroups.toDo.map((chapterTitle) => ({
+        id: null,
+        title: chapterTitle,
+        meta:
+          A_LEVEL_MATHS_SUBJECTS.find((subject) =>
+            subject.chapters.some((chapter) => chapter.title === chapterTitle),
+          )?.title ?? "A Level Maths",
+        isComplete: false,
+        isCurrent: false,
+      })),
+    }),
+    [progressGroups.completed, progressGroups.ongoing, progressGroups.toDo],
+  );
+  const studentLessonItems = useMemo(() => {
+    const orderedPages: FlowNode[] = [];
+
+    const walk = (nodeId: string) => {
+      const node = state.nodes[nodeId];
+      if (!node) return;
+
+      if (
+        node.kind === "page" &&
+        canAccessNode(state, node.id, {
+          plan: activeAccessPlan,
+          taggedChapterTitle: activeStudentMilestone ?? null,
+          customUnlockedChapterTitles: accessibleChapterTitles.filter(
+            (chapterTitle) => chapterTitle !== CHAPTER_ONE_TITLE,
+          ),
+        }) &&
+        getLessonChapterContext(state, node.id)
+      ) {
+        orderedPages.push(node);
+      }
+
+      for (const childId of node.childrenIds) {
+        walk(childId);
+      }
+    };
+
+    for (const rootId of state.rootIds) {
+      walk(rootId);
+    }
+
+    const items = orderedPages
+      .map((node) => {
+        const context = getLessonChapterContext(state, node.id);
+        if (!context || context.isAssessmentPage) return null;
+
+        return {
+          id: node.id,
+          title: node.title,
+          meta: [context.chapterTitle, context.subjectTitle].filter(Boolean).join(" · "),
+          isComplete: Boolean(lessonProgress[node.id]),
+          isCurrent: currentSubtopicId === node.id,
+        };
+      })
+      .filter((item): item is DashboardLessonTopicItem => Boolean(item));
+
+    const completed = items.filter((item) => item.isComplete);
+    const incomplete = items.filter((item) => !item.isComplete);
+    const selectedCurrent = incomplete.find((item) => item.isCurrent) ?? null;
+    const ongoing = selectedCurrent ? [selectedCurrent] : incomplete.slice(0, 1);
+    const ongoingIds = new Set(ongoing.map((item) => item.id));
+    const toDo = incomplete.filter((item) => !ongoingIds.has(item.id));
+
+    return { completed, ongoing, toDo };
+  }, [
+    accessibleChapterTitles,
+    activeStudentMilestone,
+    activeAccessPlan,
+    currentSubtopicId,
+    lessonProgress,
+    state,
+  ]);
+  const visibleProgressItems =
+    role === "student" || selectedStudent ? studentLessonItems : chapterProgressItems;
+  const accessibleTopicCount = Math.max(
+    role === "student" || selectedStudent
+      ? visibleProgressItems.completed.length +
+          visibleProgressItems.ongoing.length +
+          visibleProgressItems.toDo.length
+      : accessibleChapterTitles.length,
+    1,
+  );
+  const completedPercentage = Math.round(
+    (visibleProgressItems.completed.length / accessibleTopicCount) * 100,
+  );
+  const progressCards = [
+    {
+      title: "Topics Complete",
+      count: visibleProgressItems.completed.length,
+      items: visibleProgressItems.completed,
+      empty: "Completed topics will appear here as the current chapter moves forward.",
+      dotClassName: "bg-emerald-500",
+    },
+    {
+      title: "Topics Ongoing",
+      count: visibleProgressItems.ongoing.length,
+      items: visibleProgressItems.ongoing,
+      empty: "No current topic is tagged yet.",
+      dotClassName: "bg-amber-500",
+    },
+    {
+      title: "Topics To Do",
+      count: visibleProgressItems.toDo.length,
+      items: visibleProgressItems.toDo,
+      empty: "No unlocked topics are waiting.",
+      dotClassName: "bg-zinc-400",
+    },
+  ];
+
+  const openTopic = (item: DashboardTopicItem) => {
+    if (!item.id) return;
+    revealNode(item.id);
+    onOpenWorkspace();
+  };
+
+  const setTopicAsCurrent = (item: DashboardTopicItem) => {
+    if (!item.id || item.isComplete) return;
+    void topicProgress?.setCurrentTopic({
+      topicId: item.id,
+      topicTitle: item.title,
+      chapterTitle: item.meta.split(" · ")[0] ?? "",
+      subjectTitle: item.meta.split(" · ")[1] ?? null,
+    });
+  };
 
   const handleDeleteStudent = async () => {
     if (!selectedStudent || !onDeleteStudent || isDeletingStudent) return;
@@ -155,6 +358,13 @@ export function DashboardHome({
               </button>
               <button
                 type="button"
+                onClick={onStartTutorial}
+                className="inline-flex w-full items-center justify-center rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 sm:w-auto"
+              >
+                Replay Tutorial
+              </button>
+              <button
+                type="button"
                 onClick={onSignOut}
                 className="inline-flex w-full items-center justify-center rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 sm:w-auto"
               >
@@ -170,6 +380,139 @@ export function DashboardHome({
             </div>
           </div>
         </header>
+
+        <article
+          data-tour="dashboard-progress"
+          className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                Course Progress
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
+                A Level Maths
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                {role === "tutor"
+                  ? selectedStudent
+                    ? `Tracking ${selectedStudent.name}'s current access and chapter position.`
+                    : "Select a student to view their current course position."
+                  : "Your current course position and available topics are shown here."}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {progressCards.map((card) => (
+              <section
+                key={card.title}
+                className="min-h-48 rounded-xl border border-zinc-200 bg-white p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${card.dotClassName}`} />
+                    <h3 className="truncate text-sm font-semibold text-zinc-900">
+                      {card.title}
+                    </h3>
+                  </div>
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-600">
+                    {card.count}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {card.items.length > 0 ? (
+                    card.items.slice(0, 5).map((item) => {
+                      const content = (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">
+                              {item.title}
+                            </p>
+                            {item.isCurrent ? (
+                              <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700">
+                                Current
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-zinc-500">
+                            {item.meta}
+                          </p>
+                        </>
+                      );
+
+                      return item.id ? (
+                        <div
+                          key={`${card.title}-${item.id}`}
+                          className="flex items-center gap-2 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 transition hover:border-zinc-300 hover:bg-white hover:shadow-sm"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openTopic(item)}
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            {content}
+                          </button>
+                          {role === "student" && !item.isComplete ? (
+                            <button
+                              type="button"
+                              onClick={() => setTopicAsCurrent(item)}
+                              disabled={item.isCurrent}
+                              className={[
+                                "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+                                item.isCurrent
+                                  ? "cursor-default border-amber-200 bg-amber-50 text-amber-700"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900",
+                              ].join(" ")}
+                            >
+                              {item.isCurrent ? "Current" : "Set current"}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div
+                          key={`${card.title}-${item.title}`}
+                          className="w-full rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-left transition"
+                        >
+                          {content}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-sm leading-6 text-zinc-500">
+                      {card.empty}
+                    </p>
+                  )}
+                  {card.items.length > 5 ? (
+                    <p className="px-1 text-xs text-zinc-500">
+                      +{card.items.length - 5} more
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-xl border border-zinc-200 bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-zinc-600">
+              <span>{visibleProgressItems.completed.length} complete</span>
+              <span>
+                {role === "student"
+                  ? `${accessibleTopicCount} available topics`
+                  : selectedStudent
+                    ? `${accessibleTopicCount} available topics`
+                    : `${accessibleChapterTitles.length} unlocked topics`}
+              </span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-100">
+              <div
+                className="h-full rounded-full bg-zinc-900 transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{ width: `${completedPercentage}%` }}
+              />
+            </div>
+          </div>
+        </article>
 
         {role === "tutor" && chapterTitles.length > 0 ? (
           <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">

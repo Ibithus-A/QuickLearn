@@ -4,9 +4,8 @@ import Image from "next/image";
 import { canAccessNode, getLockedChapterMessage } from "@/lib/access";
 import { EditorActionsDrawer } from "@/components/editor-actions-drawer";
 import { FolderIcon } from "@/components/icons";
+import type { TutorialSurface } from "@/components/tutorial-showcase";
 import { useFlowState } from "@/context/flowstate-context";
-import { LESSON_PROGRESS_STORAGE_KEY } from "@/lib/constants/storage";
-import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { END_OF_TOPIC_ASSESSMENT_TITLE } from "@/lib/seed";
 import { getDocumentProxy } from "unpdf";
 import {
@@ -15,8 +14,10 @@ import {
   getNodeLockInfo,
 } from "@/lib/tree-utils";
 import type { UserAccessProfile } from "@/types/auth";
+import type { TopicProgressController, TopicProgressMetadata } from "@/types/topic-progress";
 import type { CSSProperties } from "react";
 import {
+  useCallback,
   forwardRef,
   useEffect,
   useImperativeHandle,
@@ -29,9 +30,10 @@ type EditorPaneProps = {
   role: "tutor" | "student";
   viewerProfile?: UserAccessProfile | null;
   sidebarInsetPx?: number;
+  tutorialSurface?: TutorialSurface | null;
+  topicProgress?: TopicProgressController;
 };
 
-type LessonProgressMap = Record<string, boolean>;
 type SurfaceTransitionMode = "fade" | "next" | "previous";
 type LessonSurfaceState = {
   nodeId: string | null;
@@ -126,6 +128,8 @@ export function EditorPane({
   role,
   viewerProfile = null,
   sidebarInsetPx = 0,
+  tutorialSurface = null,
+  topicProgress,
 }: EditorPaneProps) {
   const { state, revealNode } = useFlowState();
   const titleInputRef = useRef<HTMLDivElement | null>(null);
@@ -135,15 +139,17 @@ export function EditorPane({
   const [mobileAssistantNodeId, setMobileAssistantNodeId] = useState<string | null>(null);
   const [surfaceTransitionMode, setSurfaceTransitionMode] =
     useState<SurfaceTransitionMode>("fade");
-  const [lessonProgress, setLessonProgress] = usePersistedState<LessonProgressMap>({
-    key: LESSON_PROGRESS_STORAGE_KEY,
-    defaultValue: {},
-  });
+  const lessonProgress = topicProgress?.lessonProgress ?? {};
+  const currentSubtopicId = topicProgress?.currentSubtopicId ?? null;
   const [lessonSurface, setLessonSurface] = useState<LessonSurfaceState>({
     nodeId: null,
     view: "notes",
     pdfZoom: 100,
   });
+  const [lessonSurfaceExit, setLessonSurfaceExit] = useState<{
+    nodeId: string;
+  } | null>(null);
+  const lessonSurfaceExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pdfRef = useRef<PdfCanvasHandle>(null);
   const selectedId = state.selectedId;
   const selectedNode = selectedId ? state.nodes[selectedId] : null;
@@ -151,6 +157,7 @@ export function EditorPane({
     ? getNodeLockInfo(state, selectedNode.id)
     : DEFAULT_LOCK_INFO;
   const isStudent = role === "student";
+  const canChangeTopicProgress = Boolean(topicProgress?.canMutate);
   const canUseAssistant = role === "tutor" || viewerProfile?.plan === "premium";
   const isAccessBlocked =
     isStudent && selectedNode
@@ -185,6 +192,7 @@ export function EditorPane({
       ? state.nodes[selectedNode.parentId]
       : null;
   const isLessonWatched = selectedNode ? Boolean(lessonProgress[selectedNode.id]) : false;
+  const isCurrentSubtopic = selectedNode?.id === currentSubtopicId;
   const completedLessonsCount = lessonContext
     ? lessonContext.lessonIds.reduce(
         (count, lessonId) => count + (lessonProgress[lessonId] ? 1 : 0),
@@ -199,22 +207,71 @@ export function EditorPane({
     !selectedNode.content.trim().toLowerCase().includes(LEGACY_PLACEHOLDER_CONTENT)
       ? selectedNode.content.trim()
       : "";
+  const isCourseRoot = selectedNode?.kind === "folder" && selectedNode.title === "A Level Maths";
   const workspaceContext = useMemo(
     () => buildWorkspaceContext(state, selectedId),
     [selectedId, state],
   );
+  const tutorialLessonId = useMemo(() => {
+    for (const rootId of state.rootIds) {
+      const stack = [rootId];
+      while (stack.length > 0) {
+        const nodeId = stack.shift();
+        if (!nodeId) continue;
+        const node = state.nodes[nodeId];
+        if (!node) continue;
+
+        if (
+          node.kind === "page" &&
+          canAccessNode(state, node.id, viewerProfile) &&
+          getLessonChapterContext(state, node.id)
+        ) {
+          return node.id;
+        }
+
+        stack.unshift(...node.childrenIds);
+      }
+    }
+
+    return null;
+  }, [state, viewerProfile]);
   const editorShellStyle = {
     paddingLeft: sidebarInsetPx > 0 ? `min(${sidebarInsetPx}px, 88vw)` : undefined,
-    paddingRight: isAssistantHovered ? "min(460px, 46vw)" : undefined,
+    paddingRight:
+      isAssistantHovered || tutorialSurface === "ai" ? "min(460px, 46vw)" : undefined,
   } satisfies CSSProperties;
+
+  const selectedTopicMetadata = (): TopicProgressMetadata | null => {
+    if (!selectedNode || !lessonContext) return null;
+
+    return {
+      topicId: selectedNode.id,
+      topicTitle: selectedNode.title,
+      chapterTitle: lessonContext.chapterTitle,
+      subjectTitle: lessonContext.subjectTitle,
+    };
+  };
 
   const toggleLessonWatched = () => {
     if (!selectedNode || !isLessonPage) return;
 
-    setLessonProgress((current) => ({
-      ...current,
-      [selectedNode.id]: !current[selectedNode.id],
-    }));
+    const metadata = selectedTopicMetadata();
+    if (!metadata) return;
+
+    if (lessonProgress[selectedNode.id]) {
+      void topicProgress?.markTopicTodo(metadata);
+      return;
+    }
+
+    void topicProgress?.markTopicCompleted(metadata);
+  };
+
+  const setSelectedSubtopicAsCurrent = () => {
+    if (!selectedNode || !isLessonPage || isAssessmentPage) return;
+
+    const metadata = selectedTopicMetadata();
+    if (!metadata) return;
+    void topicProgress?.setCurrentTopic(metadata);
   };
 
   const nextLessonActionId = lessonContext?.nextLessonId ?? lessonContext?.assessmentId ?? null;
@@ -234,8 +291,39 @@ export function EditorPane({
   const isMobileAssistantOpen = !!selectedId && mobileAssistantNodeId === selectedId;
   const lessonView =
     lessonSurface.nodeId === selectedId ? lessonSurface.view : "notes";
+  const isLessonSurfaceExiting =
+    !!selectedId && lessonSurfaceExit?.nodeId === selectedId;
   const pdfZoom =
     lessonSurface.nodeId === selectedId ? lessonSurface.pdfZoom : 100;
+
+  const showLessonSurface = (
+    nodeId: string | null,
+    view: LessonSurfaceState["view"],
+    zoom: number,
+  ) => {
+    if (!nodeId) return;
+
+    if (lessonSurfaceExitTimerRef.current) {
+      clearTimeout(lessonSurfaceExitTimerRef.current);
+      lessonSurfaceExitTimerRef.current = null;
+    }
+
+    const currentView = lessonSurface.nodeId === nodeId ? lessonSurface.view : "notes";
+    const shouldStageVideoEntry = currentView === "notes" && view === "video";
+
+    if (!shouldStageVideoEntry) {
+      setLessonSurface({ nodeId, view, pdfZoom: zoom });
+      setLessonSurfaceExit(null);
+      return;
+    }
+
+    setLessonSurfaceExit({ nodeId });
+    lessonSurfaceExitTimerRef.current = setTimeout(() => {
+      setLessonSurface({ nodeId, view, pdfZoom: zoom });
+      setLessonSurfaceExit(null);
+      lessonSurfaceExitTimerRef.current = null;
+    }, 180);
+  };
 
   useEffect(() => {
     const titleInput = titleInputRef.current;
@@ -262,6 +350,35 @@ export function EditorPane({
     window.addEventListener("resize", fitTitle);
     return () => window.removeEventListener("resize", fitTitle);
   }, [selectedNodeTitle, titleFitKey]);
+
+  useEffect(() => {
+    return () => {
+      if (lessonSurfaceExitTimerRef.current) {
+        clearTimeout(lessonSurfaceExitTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tutorialSurface || tutorialSurface === "dashboard" || tutorialSurface === "course-map") {
+      return;
+    }
+    if (!tutorialLessonId) return;
+
+    revealNode(tutorialLessonId);
+    const frame = window.requestAnimationFrame(() => {
+      setLessonSurface((current) => ({
+        nodeId: tutorialLessonId,
+        view: tutorialSurface === "video" ? "video" : "notes",
+        pdfZoom: current.nodeId === tutorialLessonId ? current.pdfZoom : 100,
+      }));
+      if (tutorialSurface === "ai") {
+        setMobileAssistantNodeId(tutorialLessonId);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [revealNode, tutorialLessonId, tutorialSurface]);
 
   if (!selectedNode) {
     return (
@@ -341,9 +458,9 @@ export function EditorPane({
                 >
                   {selectedNode.title || getDefaultTitle(selectedNode.kind)}
                 </div>
-                {selectedNode.kind === "folder" && selectedNode.title === "A Level Maths" ? (
+                {isCourseRoot ? (
                   <p className="mt-2 px-1 text-sm leading-7 text-zinc-500">
-                    Start the course from the sidebar to open a chapter and continue through the lessons.
+                    Choose a subject, open a chapter, and move through lessons with notes, video, and progress tracking.
                   </p>
                 ) : null}
                 <span
@@ -367,7 +484,9 @@ export function EditorPane({
             >
               {selectedNode.kind === "folder" ? (
                 <section className="mb-8">
-                  {selectedNode.title === "A Level Maths" ? null : (
+                  {isCourseRoot ? (
+                    null
+                  ) : (
                     <div className="space-y-1">
                       {visibleFolderChildItems.length > 0 ? (
                         visibleFolderChildItems.map((childNode) => (
@@ -408,11 +527,7 @@ export function EditorPane({
                       type="button"
                       onClick={() => {
                         if (!isAssessmentPage && lessonView === "video") {
-                          setLessonSurface({
-                            nodeId: selectedId,
-                            view: "notes",
-                            pdfZoom,
-                          });
+                          showLessonSurface(selectedId, "notes", pdfZoom);
                           return;
                         }
                         revealWithTransition(parentFolder.id);
@@ -427,7 +542,14 @@ export function EditorPane({
                   ) : null}
 
                   {!isAssessmentPage && lessonView === "notes" ? (
-                    <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+                    <section
+                      key={`notes-${selectedNode.id}`}
+                      data-tour="lesson-notes"
+                      className={[
+                        "lesson-surface-reveal overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]",
+                        isLessonSurfaceExiting ? "lesson-surface-exit" : "",
+                      ].join(" ")}
+                    >
                       <div className="border-b border-zinc-200/80 bg-[linear-gradient(135deg,rgba(244,244,245,0.95),rgba(255,255,255,1))] px-4 py-4 md:px-5">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
@@ -513,13 +635,7 @@ export function EditorPane({
                             </div>
                             <button
                               type="button"
-                              onClick={() =>
-                                setLessonSurface({
-                                  nodeId: selectedId,
-                                  view: "video",
-                                  pdfZoom,
-                                })
-                              }
+                              onClick={() => showLessonSurface(selectedId, "video", pdfZoom)}
                               className="inline-flex items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800"
                             >
                               <span className="ml-0.5 leading-none">▶</span>
@@ -539,6 +655,14 @@ export function EditorPane({
                               lessonContext?.subjectTitle,
                             )}
                             zoom={pdfZoom}
+                            autoFitDefault={lessonSurface.nodeId !== selectedId}
+                            onAutoFitZoom={(nextZoom) =>
+                              setLessonSurface({
+                                nodeId: selectedId,
+                                view: lessonView,
+                                pdfZoom: nextZoom,
+                              })
+                            }
                             emptyTitle="Notes coming soon"
                             emptyBody="The notes for this subtopic will appear here shortly."
                           />
@@ -569,26 +693,34 @@ export function EditorPane({
                       </div>
                     </section>
                   ) : (
-                  <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                    <div className="border-b border-zinc-200/80 bg-[linear-gradient(135deg,rgba(244,244,245,0.95),rgba(255,255,255,1))] px-4 py-4 md:px-5">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-                            {isAssessmentPage ? "Assessment PDF" : "Lesson Resources"}
-                          </p>
-                          <p className="mt-1 text-sm text-zinc-600">
-                            {isAssessmentPage
-                              ? "PDF workspace placeholder for this assessment"
-                              : "Additional premium resources will appear here later"}
-                          </p>
+                  <section
+                    key={`${isAssessmentPage ? "assessment" : "video"}-${selectedNode.id}`}
+                    data-tour={!isAssessmentPage ? "lesson-video" : undefined}
+                    className={
+                      isAssessmentPage
+                        ? "lesson-surface-reveal overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]"
+                        : "lesson-surface-reveal space-y-4"
+                    }
+                  >
+                    {isAssessmentPage ? (
+                      <div className="border-b border-zinc-200/80 bg-[linear-gradient(135deg,rgba(244,244,245,0.95),rgba(255,255,255,1))] px-4 py-4 md:px-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                              Assessment PDF
+                            </p>
+                            <p className="mt-1 text-sm text-zinc-600">
+                              PDF workspace placeholder for this assessment
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
+                            PDF
+                          </span>
                         </div>
-                        <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-                          {isAssessmentPage ? "PDF" : "Premium"}
-                        </span>
                       </div>
-                    </div>
+                    ) : null}
 
-                    <div className="px-4 py-5 md:px-5">
+                    <div className={isAssessmentPage ? "px-4 py-5 md:px-5" : ""}>
                       {isAssessmentPage ? (
                         <div className="overflow-hidden rounded-none bg-white">
                           <PdfCanvasDocument
@@ -598,6 +730,14 @@ export function EditorPane({
                               lessonContext.subjectTitle,
                             )}
                             zoom={pdfZoom}
+                            autoFitDefault={lessonSurface.nodeId !== selectedId}
+                            onAutoFitZoom={(nextZoom) =>
+                              setLessonSurface({
+                                nodeId: selectedId,
+                                view: lessonView,
+                                pdfZoom: nextZoom,
+                              })
+                            }
                             emptyTitle={`${END_OF_TOPIC_ASSESSMENT_TITLE} coming soon`}
                             emptyBody="The assessment worksheet will appear here shortly."
                           />
@@ -611,15 +751,21 @@ export function EditorPane({
                           isLessonWatched={isLessonWatched}
                           onVideoComplete={() => {
                             if (isLessonWatched || !selectedNode) return;
-                            setLessonProgress((current) => ({
-                              ...current,
-                              [selectedNode.id]: true,
-                            }));
+                            const metadata = selectedTopicMetadata();
+                            if (!metadata) return;
+                            void topicProgress?.markTopicCompleted(metadata);
                           }}
                         />
                       )}
 
-                      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                      <div
+                        className={[
+                          "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
+                          isAssessmentPage
+                            ? "mt-5"
+                            : "rounded-[24px] border border-zinc-200 bg-white px-4 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.05)]",
+                        ].join(" ")}
+                      >
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={[
@@ -640,7 +786,8 @@ export function EditorPane({
                           <button
                             type="button"
                             onClick={toggleLessonWatched}
-                            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                            disabled={!canChangeTopicProgress}
+                            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {isAssessmentPage
                               ? isLessonWatched
@@ -650,6 +797,21 @@ export function EditorPane({
                                 ? "Mark as not watched"
                                 : "Mark as watched"}
                           </button>
+                          {!isAssessmentPage ? (
+                            <button
+                              type="button"
+                              onClick={setSelectedSubtopicAsCurrent}
+                              disabled={isCurrentSubtopic || !canChangeTopicProgress}
+                              className={[
+                                "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition",
+                                isCurrentSubtopic
+                                  ? "cursor-default border-amber-200 bg-amber-50 text-amber-700"
+                                  : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
+                              ].join(" ")}
+                            >
+                              {isCurrentSubtopic ? "Current subtopic" : "Set as current"}
+                            </button>
+                          ) : null}
                         </div>
 
                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -728,13 +890,15 @@ export function EditorPane({
         </div>
       )}
 
-      {selectedNode.kind === "page" && canUseAssistant ? (
+      {selectedNode.kind === "page" ? (
         <EditorActionsDrawer
           pageTitle={selectedNode.title}
           pdfTitle={assistantPdfTitle}
           pageContent={visiblePageContent}
           pageNodeId={selectedNode.id}
           workspaceContext={workspaceContext}
+          canUseAssistant={canUseAssistant}
+          forceOpen={tutorialSurface === "ai"}
           onHoverChange={setIsAssistantHovered}
           isMobileOpen={isMobileAssistantOpen}
           onMobileOpenChange={(isOpen) => {
@@ -753,12 +917,14 @@ type PdfCanvasHandle = {
 type PdfCanvasDocumentProps = {
   pdfUrl: string;
   zoom: number;
+  autoFitDefault?: boolean;
+  onAutoFitZoom?: (zoom: number) => void;
   emptyTitle: string;
   emptyBody: string;
 };
 
 const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(function PdfCanvasDocument(
-  { pdfUrl, zoom, emptyTitle, emptyBody },
+  { pdfUrl, zoom, autoFitDefault = false, onAutoFitZoom, emptyTitle, emptyBody },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -767,31 +933,41 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const firstPageAspectRef = useRef<number | null>(null);
+  const [firstPageAspect, setFirstPageAspect] = useState<number | null>(null);
+  const autoFitAppliedKeyRef = useRef<string | null>(null);
   const panDirectionRef = useRef<"left" | "right" | null>(null);
   const panVelocityRef = useRef(0);
   const panFrameRef = useRef<number | null>(null);
+
+  const computeFitZoom = useCallback(
+    (aspect: number) => {
+      if (!renderWidth) return null;
+
+      const container = containerRef.current;
+      const scrollerShell = container
+        ?.closest(".pdf-canvas-shell")
+        ?.parentElement?.closest(".scroll-slim") as HTMLElement | null;
+      const viewportHeight = scrollerShell?.clientHeight ?? window.innerHeight;
+      const verticalChrome = 280;
+      const availableHeight = Math.max(320, viewportHeight - verticalChrome);
+
+      const fitWidthForHeight = availableHeight * aspect;
+      const zoomScale = (fitWidthForHeight / renderWidth) * 100;
+      return Math.round(Math.max(50, Math.min(200, zoomScale)));
+    },
+    [renderWidth],
+  );
 
   useImperativeHandle(
     ref,
     () => ({
       computeFitToPageZoom: () => {
-        const container = containerRef.current;
         const aspect = firstPageAspectRef.current;
-        if (!container || !aspect || !renderWidth) return null;
-
-        const scrollerShell = container.closest(".pdf-canvas-shell")
-          ?.parentElement?.closest(".scroll-slim") as HTMLElement | null;
-        const viewportHeight = scrollerShell?.clientHeight ?? window.innerHeight;
-        const verticalChrome = 280;
-        const availableHeight = Math.max(320, viewportHeight - verticalChrome);
-
-        const fitWidthForHeight = availableHeight * aspect;
-        const zoomScale = (fitWidthForHeight / renderWidth) * 100;
-        const clamped = Math.round(Math.max(50, Math.min(200, zoomScale)));
-        return clamped;
+        if (!aspect) return null;
+        return computeFitZoom(aspect);
       },
     }),
-    [renderWidth],
+    [computeFitZoom],
   );
 
   useEffect(() => {
@@ -832,6 +1008,19 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
   }, [pdfUrl, zoom]);
 
   useEffect(() => {
+    if (!autoFitDefault || zoom !== 100 || !firstPageAspect) return;
+
+    const autoFitKey = `${pdfUrl}:${renderWidth}:${firstPageAspect}`;
+    if (autoFitAppliedKeyRef.current === autoFitKey) return;
+
+    const fitZoom = computeFitZoom(firstPageAspect);
+    if (!fitZoom || Math.abs(fitZoom - zoom) < 2) return;
+
+    autoFitAppliedKeyRef.current = autoFitKey;
+    onAutoFitZoom?.(fitZoom);
+  }, [autoFitDefault, computeFitZoom, firstPageAspect, onAutoFitZoom, pdfUrl, renderWidth, zoom]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     const renderPdf = async () => {
@@ -840,6 +1029,7 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
       setIsLoading(true);
       setHasError(false);
       setPageImages([]);
+      setFirstPageAspect(null);
 
       try {
         let buffer = pdfBufferCache.get(pdfUrl);
@@ -864,7 +1054,9 @@ const PdfCanvasDocument = forwardRef<PdfCanvasHandle, PdfCanvasDocumentProps>(fu
           const page = await pdf.getPage(pageNumber);
           const baseViewport = page.getViewport({ scale: 1 });
           if (pageNumber === 1) {
-            firstPageAspectRef.current = baseViewport.width / baseViewport.height;
+            const firstPageAspect = baseViewport.width / baseViewport.height;
+            firstPageAspectRef.current = firstPageAspect;
+            setFirstPageAspect(firstPageAspect);
           }
           const fitScale = renderWidth / baseViewport.width;
           const displayScale = fitScale * zoomScale;
@@ -1047,21 +1239,86 @@ function LessonVideoPlayer({
   isLessonWatched: boolean;
   onVideoComplete: () => void;
 }) {
-  const [isVideoAvailable, setIsVideoAvailable] = useState(true);
+  const [videoStatus, setVideoStatus] = useState<"checking" | "available" | "unavailable">(
+    "checking",
+  );
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  if (!isVideoAvailable) {
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checkVideo = async () => {
+      try {
+        const response = await fetch(videoUrl, { method: "HEAD" });
+        if (isCancelled) return;
+        setVideoStatus(response.ok ? "available" : "unavailable");
+      } catch {
+        if (!isCancelled) setVideoStatus("unavailable");
+      }
+    };
+
+    void checkVideo();
+    return () => {
+      isCancelled = true;
+    };
+  }, [videoUrl]);
+
+  const togglePlayback = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      await video.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    video.pause();
+    setIsPlaying(false);
+  };
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  };
+
+  const seekTo = (value: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.currentTime = value;
+    setCurrentTime(value);
+  };
+
+  const enterFullscreen = async () => {
+    const video = videoRef.current;
+    if (!video || !video.requestFullscreen) return;
+    await video.requestFullscreen();
+  };
+
+  if (videoStatus !== "available") {
     return (
-      <div className="flex aspect-video items-center justify-center rounded-[24px] border border-dashed border-zinc-300 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(244,244,245,0.92))]">
+      <div className="flex aspect-video items-center justify-center overflow-hidden rounded-[24px] border border-zinc-200 bg-zinc-950 shadow-[0_24px_60px_rgba(15,23,42,0.16)]">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-zinc-200 bg-white shadow-sm">
-            <span className="ml-1 text-2xl text-zinc-700">▶</span>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 shadow-sm">
+            <span className="ml-1 text-2xl text-white">▶</span>
           </div>
           <div>
-            <span className="inline-flex items-center rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white">
-              Coming soon
+            <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">
+              {videoStatus === "checking" ? "Loading" : "Coming soon"}
             </span>
-            <p className="mt-3 text-base font-medium text-zinc-900">Video walkthrough coming soon</p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-3 text-base font-medium text-white">
+              Video walkthrough coming soon
+            </p>
+            <p className="mt-1 max-w-md text-sm text-white/55">
               This lesson’s full walkthrough will appear here once the video course is released.
             </p>
           </div>
@@ -1094,18 +1351,91 @@ function LessonVideoPlayer({
       </div>
       <div className="bg-black">
         <video
+          ref={videoRef}
           key={videoUrl}
-          controls
           preload="metadata"
           poster={posterUrl}
-          className="block aspect-video w-full bg-black"
-          onEnded={onVideoComplete}
-          onError={() => setIsVideoAvailable(false)}
+          className={[
+            "block aspect-video w-full bg-black transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            isVideoReady ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+          onClick={() => {
+            void togglePlayback();
+          }}
+          onLoadedMetadata={(event) => {
+            setIsVideoReady(true);
+            setDuration(event.currentTarget.duration || 0);
+            setCurrentTime(event.currentTarget.currentTime || 0);
+            setIsMuted(event.currentTarget.muted);
+          }}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => {
+            setIsPlaying(false);
+            onVideoComplete();
+          }}
+          onError={() => setVideoStatus("unavailable")}
         >
           <source src={videoUrl} type="video/mp4" />
           Your browser does not support embedded videos.
         </video>
+        <div className="border-t border-white/10 bg-zinc-950 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                void togglePlayback();
+              }}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+            >
+              {isPlaying ? "II" : "▶"}
+            </button>
+            <span className="min-w-[84px] text-xs font-medium tabular-nums text-white/70">
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || currentTime)}
+              onChange={(event) => seekTo(Number(event.target.value))}
+              className="h-1.5 min-w-0 flex-1 accent-white"
+              aria-label="Video progress"
+            />
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xs font-semibold text-white transition hover:bg-white/15"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
+              {isMuted ? "M" : "V"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void enterFullscreen();
+              }}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xs font-semibold text-white transition hover:bg-white/15"
+              aria-label="Enter fullscreen"
+            >
+              ⛶
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+function formatVideoTime(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0:00";
+
+  const minutes = Math.floor(value / 60);
+  const seconds = Math.floor(value % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }

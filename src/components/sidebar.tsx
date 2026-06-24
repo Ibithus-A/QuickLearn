@@ -6,6 +6,7 @@ import { SidebarNode } from "@/components/sidebar-node";
 import { useFlowState } from "@/context/flowstate-context";
 import { A_LEVEL_MATHS_TITLE } from "@/lib/seed";
 import type { UserAccessProfile } from "@/types/auth";
+import type { TopicProgressController } from "@/types/topic-progress";
 import Image from "next/image";
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +16,7 @@ type SidebarProps = {
   onRequestClose?: () => void;
   role?: "tutor" | "student";
   viewerProfile?: UserAccessProfile | null;
+  topicProgress?: TopicProgressController;
 };
 
 function collectSubtreeIds(
@@ -40,6 +42,7 @@ export function Sidebar({
   onRequestClose,
   role = "tutor",
   viewerProfile = null,
+  topicProgress,
 }: SidebarProps) {
   const {
     state,
@@ -54,6 +57,8 @@ export function Sidebar({
     useFlowState();
   const isStudent = role === "student";
   const canManage = !isStudent;
+  const lessonProgress = topicProgress?.lessonProgress ?? {};
+  const currentSubtopicId = topicProgress?.currentSubtopicId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const lastStudentAccessKeyRef = useRef<string | null>(null);
 
@@ -307,29 +312,33 @@ export function Sidebar({
           ) : null}
         </div>
 
-        {visibleRootIds.length === 0 ? (
-          <div className="mt-2 w-full max-w-full rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-center">
-            <p className="text-sm font-medium text-zinc-700">Your workspace is empty</p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Create a page or folder to get started.
-            </p>
-          </div>
-        ) : (
-          visibleRootIds.map((nodeId) => (
-            <SidebarNode
-              key={nodeId}
-              nodeId={nodeId}
-              depth={0}
-              canManage={canManage}
-              canViewNode={(id) => visibleNodeIds.has(id)}
-              isLockedNode={(id) =>
-                isStudent &&
-                visibleNodeIds.has(id) &&
-                !canAccessNode(state, id, viewerProfile)
-              }
-            />
-          ))
-        )}
+        <div data-tour="sidebar-tree">
+          {visibleRootIds.length === 0 ? (
+            <div className="mt-2 w-full max-w-full rounded-lg border border-dashed border-zinc-300 bg-white p-4 text-center">
+              <p className="text-sm font-medium text-zinc-700">Your workspace is empty</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Create a page or folder to get started.
+              </p>
+            </div>
+          ) : (
+            visibleRootIds.map((nodeId) => (
+              <SidebarNode
+                key={nodeId}
+                nodeId={nodeId}
+                depth={0}
+                canManage={canManage}
+                canViewNode={(id) => visibleNodeIds.has(id)}
+                isLockedNode={(id) =>
+                  isStudent &&
+                  visibleNodeIds.has(id) &&
+                  !canAccessNode(state, id, viewerProfile)
+                }
+                isPageComplete={(id) => Boolean(lessonProgress[id])}
+                isPageCurrent={(id) => currentSubtopicId === id}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       <div className="border-t border-zinc-200 px-3 py-3">
