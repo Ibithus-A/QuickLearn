@@ -6,21 +6,25 @@ import { MenuIcon } from "@/components/icons";
 import { LandingPage } from "@/components/landing-page";
 import { SignInPortal } from "@/components/sign-in-portal";
 import { Sidebar } from "@/components/sidebar";
+import { TutorialShowcase, type TutorialSurface } from "@/components/tutorial-showcase";
 import { FlowStateProvider } from "@/context/flowstate-context";
 import { useAuthSession } from "@/lib/hooks/use-auth-session";
 import { useStudentProgress } from "@/lib/hooks/use-student-progress";
 import { useStudents } from "@/lib/hooks/use-students";
 import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
+import { useTopicProgress } from "@/lib/hooks/use-topic-progress";
 import type { AuthenticatedAccount } from "@/types/auth";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 type AppView = "workspace" | "dashboard";
 const PORTAL_CONTAINER_CLASS = "relative min-h-dvh w-full overflow-hidden bg-[var(--surface-panel)]";
 
 export default function HomePage() {
-  const [view, setView] = useState<AppView>("workspace");
+  const [view, setView] = useState<AppView>("dashboard");
   const [isSidebarAutoOpen, setIsSidebarAutoOpen] = useState(false);
   const [signInView, setSignInView] = useState<"sign-in" | "sign-up" | null>(null);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [tutorialSurface, setTutorialSurface] = useState<TutorialSurface>("dashboard");
   const { currentUser, setAuthenticatedUser, signOut } = useAuthSession();
   const { viewerProfile, students, updateStudentAccess, deleteStudent } = useStudents(currentUser?.email);
   const effectiveCurrentUser = useMemo(
@@ -32,6 +36,7 @@ export default function HomePage() {
     selectedStudent,
     selectedStudentPlan,
     activeStudentUnlocks,
+    activeStudentMilestone,
     currentStudentStats,
     selectedStudentMilestone,
     chapterTagsByTitle,
@@ -43,11 +48,19 @@ export default function HomePage() {
     chapterTitles,
   } = useStudentProgress(currentUser, viewerProfile, students, updateStudentAccess, deleteStudent);
   const { sidebarWidth, startResize, isResizing } = useSidebarResize();
+  const progressStudentId =
+    effectiveCurrentUser?.role === "student"
+      ? effectiveCurrentUser.id
+      : selectedStudentId || null;
+  const topicProgress = useTopicProgress({
+    currentUser: effectiveCurrentUser,
+    targetStudentId: progressStudentId,
+  });
 
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
     setAuthenticatedUser(account);
     setSignInView(null);
-    setView(account.role === "student" ? "workspace" : "dashboard");
+    setView("dashboard");
   };
 
   const handleSignOut = async () => {
@@ -64,6 +77,30 @@ export default function HomePage() {
     setIsSidebarAutoOpen(true);
     setView("workspace");
   };
+
+  const handleStartTutorial = useCallback(() => {
+    setTutorialSurface("dashboard");
+    setIsTutorialOpen(true);
+    setIsSidebarAutoOpen(false);
+    setView("dashboard");
+  }, []);
+
+  const handleCloseTutorial = useCallback(() => {
+    setIsTutorialOpen(false);
+    setTutorialSurface("dashboard");
+  }, []);
+
+  const handleTutorialSurfaceChange = useCallback((surface: TutorialSurface) => {
+    setTutorialSurface(surface);
+    if (surface === "dashboard") {
+      setView("dashboard");
+      setIsSidebarAutoOpen(false);
+      return;
+    }
+
+    setView("workspace");
+    setIsSidebarAutoOpen(true);
+  }, []);
 
   return (
     <FlowStateProvider>
@@ -90,6 +127,7 @@ export default function HomePage() {
             role={effectiveCurrentUser.role}
             stats={currentStudentStats}
             onOpenWorkspace={handleOpenWorkspaceFromDashboard}
+            onStartTutorial={handleStartTutorial}
             onSignOut={handleSignOut}
             onSwitchAccount={handleSignOut}
             currentPlan={viewerProfile?.plan ?? "basic"}
@@ -98,6 +136,7 @@ export default function HomePage() {
             selectedStudent={selectedStudent}
             selectedStudentId={selectedStudentId}
             selectedStudentPlan={selectedStudentPlan}
+            activeStudentMilestone={activeStudentMilestone}
             selectedStudentMilestone={selectedStudentMilestone}
             chapterTagsByTitle={chapterTagsByTitle}
             accessibleChapterTitles={activeStudentUnlocks}
@@ -106,6 +145,7 @@ export default function HomePage() {
             onSetMilestoneChapter={setMilestoneForSelectedStudent}
             onToggleChapter={toggleChapterForSelectedStudent}
             onDeleteStudent={deleteSelectedStudent}
+            topicProgress={topicProgress}
           />
         ) : (
           <div className={PORTAL_CONTAINER_CLASS}>
@@ -154,6 +194,7 @@ export default function HomePage() {
                   onRequestClose={() => setIsSidebarAutoOpen(false)}
                   role={effectiveCurrentUser.role}
                   viewerProfile={viewerProfile}
+                  topicProgress={topicProgress}
                 />
                 <div
                   className="absolute inset-y-0 right-0 hidden w-2 cursor-col-resize lg:block"
@@ -176,10 +217,19 @@ export default function HomePage() {
                 role={effectiveCurrentUser.role}
                 viewerProfile={viewerProfile}
                 sidebarInsetPx={isSidebarAutoOpen ? sidebarWidth : 0}
+                tutorialSurface={isTutorialOpen ? tutorialSurface : null}
+                topicProgress={topicProgress}
               />
             </div>
           </div>
         )}
+        {isTutorialOpen ? (
+          <TutorialShowcase
+            isOpen={isTutorialOpen}
+            onClose={handleCloseTutorial}
+            onSurfaceChange={handleTutorialSurfaceChange}
+          />
+        ) : null}
       </main>
     </FlowStateProvider>
   );

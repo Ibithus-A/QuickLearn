@@ -1,0 +1,237 @@
+"use client";
+
+import { createClient } from "@/lib/supabase/client";
+import type { AuthenticatedAccount } from "@/types/auth";
+import type {
+  TopicProgressController,
+  TopicProgressMetadata,
+  TopicProgressRow,
+} from "@/types/topic-progress";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type UseTopicProgressOptions = {
+  currentUser: AuthenticatedAccount | null;
+  targetStudentId: string | null;
+};
+
+const EMPTY_CONTROLLER: TopicProgressController = {
+  rows: [],
+  rowsByTopicId: {},
+  lessonProgress: {},
+  currentSubtopicId: null,
+  isLoading: false,
+  error: "",
+  canMutate: false,
+  refresh: async () => {},
+  setCurrentTopic: async () => {},
+  markTopicCompleted: async () => {},
+  markTopicTodo: async () => {},
+};
+
+function normalizeRow(value: unknown): TopicProgressRow | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Partial<TopicProgressRow>;
+  if (typeof row.id !== "string") return null;
+  if (typeof row.student_id !== "string") return null;
+  if (typeof row.topic_id !== "string") return null;
+  if (typeof row.topic_title !== "string") return null;
+  if (row.status !== "todo" && row.status !== "current" && row.status !== "completed") {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    student_id: row.student_id,
+    topic_id: row.topic_id,
+    topic_title: row.topic_title,
+    chapter_title: typeof row.chapter_title === "string" ? row.chapter_title : null,
+    subject_title: typeof row.subject_title === "string" ? row.subject_title : null,
+    status: row.status,
+    watched_video: Boolean(row.watched_video),
+    started_at: typeof row.started_at === "string" ? row.started_at : null,
+    completed_at: typeof row.completed_at === "string" ? row.completed_at : null,
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : "",
+  };
+}
+
+function toPlaceholderRow(
+  currentUser: AuthenticatedAccount,
+  metadata: TopicProgressMetadata,
+  status: TopicProgressRow["status"],
+): TopicProgressRow {
+  const now = new Date().toISOString();
+
+  return {
+    id: `${currentUser.id}:${metadata.topicId}`,
+    student_id: currentUser.id,
+    topic_id: metadata.topicId,
+    topic_title: metadata.topicTitle,
+    chapter_title: metadata.chapterTitle,
+    subject_title: metadata.subjectTitle,
+    status,
+    watched_video: status === "completed",
+    started_at: status === "todo" ? null : now,
+    completed_at: status === "completed" ? now : null,
+    updated_at: now,
+  };
+}
+
+function metadataToRpcArgs(metadata: TopicProgressMetadata) {
+  return {
+    p_topic_id: metadata.topicId,
+    p_topic_title: metadata.topicTitle,
+    p_chapter_title: metadata.chapterTitle,
+    p_subject_title: metadata.subjectTitle ?? "",
+  };
+}
+
+export function useTopicProgress({
+  currentUser,
+  targetStudentId,
+}: UseTopicProgressOptions): TopicProgressController {
+  const [rows, setRows] = useState<TopicProgressRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const canMutate = Boolean(
+    currentUser && currentUser.role === "student" && targetStudentId === currentUser.id,
+  );
+
+  const refresh = useCallback(async () => {
+    if (!currentUser || !targetStudentId) {
+      setRows([]);
+      setError("");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const supabase = createClient();
+      const { data, error: progressError } = await supabase
+        .from("student_topic_progress")
+        .select(
+          "id, student_id, topic_id, topic_title, chapter_title, subject_title, status, watched_video, started_at, completed_at, updated_at",
+        )
+        .eq("student_id", targetStudentId)
+        .order("updated_at", { ascending: false });
+
+      if (progressError) throw progressError;
+      setRows((data ?? []).map(normalizeRow).filter((row): row is TopicProgressRow => Boolean(row)));
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Unable to load topic progress.";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser, targetStudentId]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const applyOptimisticRow = useCallback(
+    (metadata: TopicProgressMetadata, status: TopicProgressRow["status"]) => {
+      if (!currentUser) return;
+      const nextRow = toPlaceholderRow(currentUser, metadata, status);
+
+      setRows((current) => {
+        const withoutTopic = current.filter((row) => row.topic_id !== metadata.topicId);
+        const withoutCurrent =
+          status === "current"
+            ? withoutTopic.map((row) =>
+                row.status === "current"
+                  ? { ...row, status: "todo" as const, watched_video: false, completed_at: null }
+                  : row,
+              )
+            : withoutTopic;
+
+        return status === "todo" ? withoutCurrent : [nextRow, ...withoutCurrent];
+      });
+    },
+    [currentUser],
+  );
+
+  const callProgressRpc = useCallback(
+    async (rpcName: string, metadata: TopicProgressMetadata) => {
+      if (!canMutate) return;
+      setError("");
+
+      try {
+        const supabase = createClient();
+        const { error: rpcError } = await supabase.rpc(rpcName, metadataToRpcArgs(metadata));
+        if (rpcError) throw rpcError;
+        await refresh();
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : "Unable to save topic progress.";
+        setError(message);
+        await refresh();
+      }
+    },
+    [canMutate, refresh],
+  );
+
+  const setCurrentTopic = useCallback(
+    async (metadata: TopicProgressMetadata) => {
+      if (!canMutate) return;
+      applyOptimisticRow(metadata, "current");
+      await callProgressRpc("set_current_topic", metadata);
+    },
+    [applyOptimisticRow, callProgressRpc, canMutate],
+  );
+
+  const markTopicCompleted = useCallback(
+    async (metadata: TopicProgressMetadata) => {
+      if (!canMutate) return;
+      applyOptimisticRow(metadata, "completed");
+      await callProgressRpc("mark_topic_completed", metadata);
+    },
+    [applyOptimisticRow, callProgressRpc, canMutate],
+  );
+
+  const markTopicTodo = useCallback(
+    async (metadata: TopicProgressMetadata) => {
+      if (!canMutate) return;
+      applyOptimisticRow(metadata, "todo");
+      await callProgressRpc("mark_topic_todo", metadata);
+    },
+    [applyOptimisticRow, callProgressRpc, canMutate],
+  );
+
+  return useMemo(() => {
+    if (!currentUser || !targetStudentId) return EMPTY_CONTROLLER;
+
+    const rowsByTopicId = Object.fromEntries(rows.map((row) => [row.topic_id, row]));
+    const lessonProgress = Object.fromEntries(
+      rows.map((row) => [row.topic_id, row.status === "completed" || row.watched_video]),
+    );
+    const currentSubtopicId =
+      rows.find((row) => row.status === "current")?.topic_id ?? null;
+
+    return {
+      rows,
+      rowsByTopicId,
+      lessonProgress,
+      currentSubtopicId,
+      isLoading,
+      error,
+      canMutate,
+      refresh,
+      setCurrentTopic,
+      markTopicCompleted,
+      markTopicTodo,
+    };
+  }, [
+    canMutate,
+    currentUser,
+    error,
+    isLoading,
+    markTopicCompleted,
+    markTopicTodo,
+    refresh,
+    rows,
+    setCurrentTopic,
+    targetStudentId,
+  ]);
+}

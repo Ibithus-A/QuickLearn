@@ -47,6 +47,7 @@ export function useStudentProgress(
       ? viewerProfile
       : selectedStudent;
   const activeStudentUnlocks = resolveAccessibleChapterTitles(activeStudentAccess);
+  const activeStudentMilestone = resolveTaggedChapterTitle(activeStudentAccess);
 
   const statsByStudent = useMemo(() => {
     const entries = studentAccounts.map((student, index) => [
@@ -157,6 +158,7 @@ export function useStudentProgress(
     selectedStudent,
     selectedStudentPlan: selectedStudent?.plan ?? "basic",
     activeStudentUnlocks,
+    activeStudentMilestone,
     currentStudentStats,
     selectedStudentMilestone,
     chapterTagsByTitle,

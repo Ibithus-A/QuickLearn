@@ -164,11 +164,16 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .landing-intro,
-  .scroll-reveal {
+  .scroll-reveal,
+  .lesson-surface-reveal,
+  .lesson-surface-exit,
+  .tutorial-card,
+  .tutorial-spotlight {
     opacity: 1;
     transform: none;
     filter: none;
     transition: none;
+    animation: none;
   }
 }
 
@@ -234,6 +239,63 @@ textarea {
 
 .surface-transition-previous {
   animation: surfaceSlideRight 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes lessonSurfaceReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.lesson-surface-reveal {
+  animation: lessonSurfaceReveal 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lesson-surface-exit {
+  opacity: 0;
+  transform: translateY(8px);
+  filter: blur(4px);
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    transform 180ms cubic-bezier(0.4, 0, 1, 1),
+    filter 180ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes tutorialCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tutorialSpotlightIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tutorial-card {
+  animation: tutorialCardIn 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tutorial-spotlight {
+  animation: tutorialSpotlightIn 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes loadingShimmer {
