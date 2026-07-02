@@ -162,7 +162,7 @@ export function SignInPortal({
   };
 
   return (
-    <section className="relative min-h-dvh w-full bg-[var(--surface-panel)]">
+    <section className="relative min-h-dvh w-full bg-(--surface-panel)">
       {showCloseButton ? (
         <button
           type="button"

@@ -191,7 +191,7 @@ export function TutorialShowcase({
 
   return (
     <div
-      className="fixed inset-0 z-[90]"
+      className="fixed inset-0 z-90"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-showcase-title"
