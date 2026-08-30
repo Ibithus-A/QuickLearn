@@ -4,7 +4,8 @@ import { canAccessNode } from "@/lib/access";
 import { CloseIcon, FolderIcon, PlusIcon } from "@/components/icons";
 import { SidebarNode } from "@/components/sidebar-node";
 import { useFlowState } from "@/context/flowstate-context";
-import { A_LEVEL_MATHS_TITLE } from "@/lib/seed";
+import { useAssessmentAccess } from "@/lib/hooks/use-assessment-access";
+import { A_LEVEL_MATHS_TITLE, INTERACTIVE_ASSESSMENT_TITLE } from "@/lib/seed";
 import type { UserAccessProfile } from "@/types/auth";
 import type { TopicProgressController } from "@/types/topic-progress";
 import Image from "next/image";
@@ -60,6 +61,13 @@ export function Sidebar({
   const workspaceTopicProgress = isStudent ? topicProgress : undefined;
   const lessonProgress = workspaceTopicProgress?.lessonProgress ?? {};
   const currentSubtopicId = workspaceTopicProgress?.currentSubtopicId ?? null;
+  const assessmentProgressVersion = (workspaceTopicProgress?.rows ?? [])
+    .map((row) => `${row.topic_id}:${row.status}:${row.watched_video}:${row.updated_at}`)
+    .join("|");
+  const assessmentAccess = useAssessmentAccess(
+    isStudent ? viewerProfile?.id ?? null : null,
+    assessmentProgressVersion,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const lastStudentAccessKeyRef = useRef<string | null>(null);
 
@@ -332,7 +340,9 @@ export function Sidebar({
                 isLockedNode={(id) =>
                   isStudent &&
                   visibleNodeIds.has(id) &&
-                  !canAccessNode(state, id, viewerProfile)
+                  (!canAccessNode(state, id, viewerProfile) ||
+                    (state.nodes[id]?.title === INTERACTIVE_ASSESSMENT_TITLE &&
+                      !assessmentAccess.isUnlocked))
                 }
                 isPageComplete={(id) => Boolean(lessonProgress[id])}
                 isPageCurrent={(id) => currentSubtopicId === id}

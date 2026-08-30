@@ -2,6 +2,7 @@ import type { FlowNode, FlowState } from "@/types/flowstate";
 
 export const A_LEVEL_MATHS_TITLE = "A Level Maths";
 export const END_OF_TOPIC_ASSESSMENT_TITLE = "Assessment";
+export const INTERACTIVE_ASSESSMENT_TITLE = "Assessment — Interactive";
 const LEGACY_END_OF_TOPIC_ASSESSMENT_TITLE = "End Of Topic Assessment";
 const DEFAULT_PAGE_CONTENT = "";
 
@@ -18,6 +19,30 @@ type SubjectDef = {
 export const PURE_MATHEMATICS_TITLE = "Pure Mathematics";
 export const MECHANICS_TITLE = "Mechanics";
 export const STATISTICS_TITLE = "Statistics";
+export const LAWS_OF_INDICES_NATIVE_PREVIEW_TITLE =
+  "1.1 Laws of Indices — Notion Preview";
+export const SURDS_NATIVE_PREVIEW_TITLE =
+  "1.2 Surds and Rationalising Denominators — Notion Preview";
+export const QUADRATIC_FUNCTIONS_NATIVE_PREVIEW_TITLE =
+  "1.3 Quadratic Functions — Notion Preview";
+export const SIMULTANEOUS_EQUATIONS_NATIVE_PREVIEW_TITLE =
+  "1.4 Simultaneous Equations — Notion Preview";
+export const INEQUALITIES_NATIVE_PREVIEW_TITLE =
+  "1.5 Inequalities — Notion Preview";
+export const POLYNOMIALS_NATIVE_PREVIEW_TITLE =
+  "1.6 Polynomials and Algebraic Division — Notion Preview";
+export const GRAPHS_OF_FUNCTIONS_NATIVE_PREVIEW_TITLE =
+  "1.7 Graphs of Functions — Notion Preview";
+export const MODULUS_FUNCTION_NATIVE_PREVIEW_TITLE =
+  "1.8 The Modulus Function — Notion Preview";
+export const COMPOSITE_INVERSE_FUNCTIONS_NATIVE_PREVIEW_TITLE =
+  "1.9 Composite and Inverse Functions — Notion Preview";
+export const GRAPH_TRANSFORMATIONS_NATIVE_PREVIEW_TITLE =
+  "1.10 Transformations of Graphs — Notion Preview";
+export const PARTIAL_FRACTIONS_NATIVE_PREVIEW_TITLE =
+  "1.11 Partial Fractions — Notion Preview";
+export const FUNCTIONS_MODELLING_NATIVE_PREVIEW_TITLE =
+  "1.12 Functions in Modelling — Notion Preview";
 
 export const A_LEVEL_MATHS_SUBJECTS: SubjectDef[] = [
   {
@@ -27,17 +52,30 @@ export const A_LEVEL_MATHS_SUBJECTS: SubjectDef[] = [
         title: "Chapter 1: Algebra and Functions",
         subtopics: [
           "1.1 Laws of Indices",
+          LAWS_OF_INDICES_NATIVE_PREVIEW_TITLE,
           "1.2 Surds and Rationalising Denominators",
+          SURDS_NATIVE_PREVIEW_TITLE,
           "1.3 Quadratic Functions",
+          QUADRATIC_FUNCTIONS_NATIVE_PREVIEW_TITLE,
           "1.4 Simultaneous Equations",
+          SIMULTANEOUS_EQUATIONS_NATIVE_PREVIEW_TITLE,
           "1.5 Inequalities",
+          INEQUALITIES_NATIVE_PREVIEW_TITLE,
           "1.6 Polynomials and Algebraic Division",
+          POLYNOMIALS_NATIVE_PREVIEW_TITLE,
           "1.7 Graphs of Functions",
+          GRAPHS_OF_FUNCTIONS_NATIVE_PREVIEW_TITLE,
           "1.8 The Modulus Function",
+          MODULUS_FUNCTION_NATIVE_PREVIEW_TITLE,
           "1.9 Composite and Inverse Functions",
+          COMPOSITE_INVERSE_FUNCTIONS_NATIVE_PREVIEW_TITLE,
           "1.10 Transformations of Graphs",
+          GRAPH_TRANSFORMATIONS_NATIVE_PREVIEW_TITLE,
           "1.11 Partial Fractions",
+          PARTIAL_FRACTIONS_NATIVE_PREVIEW_TITLE,
           "1.12 Functions in Modelling",
+          FUNCTIONS_MODELLING_NATIVE_PREVIEW_TITLE,
+          INTERACTIVE_ASSESSMENT_TITLE,
         ],
       },
       {
@@ -630,7 +668,13 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
       next.nodes[chapterId].childrenIds = orderChildrenByTitle(
         next.nodes,
         next.nodes[chapterId].childrenIds,
-        [...chapter.subtopics, END_OF_TOPIC_ASSESSMENT_TITLE],
+        chapter.subtopics.includes(INTERACTIVE_ASSESSMENT_TITLE)
+          ? [
+              ...chapter.subtopics.filter((title) => title !== INTERACTIVE_ASSESSMENT_TITLE),
+              END_OF_TOPIC_ASSESSMENT_TITLE,
+              INTERACTIVE_ASSESSMENT_TITLE,
+            ]
+          : [...chapter.subtopics, END_OF_TOPIC_ASSESSMENT_TITLE],
       );
     }
 

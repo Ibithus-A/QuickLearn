@@ -227,6 +227,12 @@ export function canAccessNode(
   if (node.kind !== "page") return false;
   if (node.parentId !== chapter.chapterId) return false;
 
+  // Assessment PDFs contain answer keys and are retained for tutor reference only.
+  // Students use the separately controlled interactive assessment surface.
+  if (normalizeTitle(node.title) === normalizeTitle(END_OF_TOPIC_ASSESSMENT_TITLE)) {
+    return false;
+  }
+
   const allowedPageTitles = STUDENT_PAGE_TITLES_BY_CHAPTER.get(
     normalizeTitle(chapter.chapterTitle),
   );

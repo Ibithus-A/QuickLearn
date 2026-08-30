@@ -15,6 +15,10 @@ import type { UserAccessProfile, UserPlan, UserRole } from "@/types/auth";
 import type { StudentDailyStats } from "@/types/dashboard";
 import type { FlowNode } from "@/types/flowstate";
 import type { TopicProgressController } from "@/types/topic-progress";
+import type {
+  AssessmentAttemptSummary,
+  AssessmentPrerequisiteSummary,
+} from "@/lib/hooks/use-assessment-access";
 import { useMemo, useState } from "react";
 
 type DashboardHomeProps = {
@@ -39,6 +43,13 @@ type DashboardHomeProps = {
   onSetStudentPlan?: (plan: UserPlan) => Promise<void>;
   onSetMilestoneChapter?: (chapterTitle: string) => Promise<void>;
   onToggleChapter?: (chapterTitle: string) => Promise<void>;
+  isChapterOneAssessmentUnlocked?: boolean;
+  assessmentRequiresPremium?: boolean;
+  isAssessmentAccessLoading?: boolean;
+  assessmentAccessError?: string;
+  chapterOneAssessmentAttempt?: AssessmentAttemptSummary | null;
+  chapterOneAssessmentPrerequisite?: AssessmentPrerequisiteSummary;
+  onToggleChapterOneAssessment?: () => Promise<void>;
   onDeleteStudent?: () => Promise<{ ok: boolean; error?: string }>;
   topicProgress?: TopicProgressController;
 };
@@ -82,6 +93,13 @@ export function DashboardHome({
   onSetStudentPlan,
   onSetMilestoneChapter,
   onToggleChapter,
+  isChapterOneAssessmentUnlocked = false,
+  assessmentRequiresPremium = false,
+  isAssessmentAccessLoading = false,
+  assessmentAccessError = "",
+  chapterOneAssessmentAttempt = null,
+  chapterOneAssessmentPrerequisite = { isComplete: false, completedCount: 0, totalCount: 0 },
+  onToggleChapterOneAssessment,
   onDeleteStudent,
   topicProgress,
 }: DashboardHomeProps) {
@@ -133,6 +151,8 @@ export function DashboardHome({
       ).length
     : 0;
   const activeAccessPlan = role === "tutor" ? selectedStudentPlan : currentPlan;
+  const assessmentNeedsPremium = assessmentRequiresPremium;
+  const assessmentModulesIncomplete = !chapterOneAssessmentPrerequisite.isComplete;
   const accessibleChapterSet = useMemo(
     () => new Set(accessibleChapterTitles),
     [accessibleChapterTitles],
@@ -272,6 +292,22 @@ export function DashboardHome({
   const completedPercentage = Math.round(
     (visibleProgressItems.completed.length / accessibleTopicCount) * 100,
   );
+  const submittedAssessmentScore =
+    chapterOneAssessmentAttempt?.status === "submitted" &&
+    typeof chapterOneAssessmentAttempt.score === "number"
+      ? chapterOneAssessmentAttempt.score
+      : null;
+  const submittedAssessmentMaximum =
+    chapterOneAssessmentAttempt?.status === "submitted"
+      ? chapterOneAssessmentAttempt.automated_total_marks ??
+        chapterOneAssessmentAttempt.total_marks
+      : null;
+  const submittedAssessmentPercentage =
+    submittedAssessmentScore !== null &&
+    submittedAssessmentMaximum !== null &&
+    submittedAssessmentMaximum > 0
+      ? Math.round((submittedAssessmentScore / submittedAssessmentMaximum) * 100)
+      : null;
   const progressCards = [
     {
       title: "Topics Complete",
@@ -538,6 +574,108 @@ export function DashboardHome({
             </div>
           </div>
         </article>
+
+        {role === "student" ? (
+          <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Assessment Result
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 md:text-2xl">
+                  Chapter 1: Algebra and Functions
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  Your saved assessment status and final automatically marked score.
+                </p>
+              </div>
+
+              {submittedAssessmentScore !== null && submittedAssessmentMaximum !== null ? (
+                <div className="min-w-36 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-right">
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {submittedAssessmentScore}
+                    <span className="text-lg font-medium text-zinc-400">
+                      {` / ${submittedAssessmentMaximum}`}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-zinc-500">
+                    {submittedAssessmentPercentage}%
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-5 rounded-xl border border-zinc-200 bg-white px-4 py-3.5">
+              {isAssessmentAccessLoading ? (
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-400" />
+                  Loading assessment result
+                </div>
+              ) : assessmentAccessError ? (
+                <p className="text-sm text-rose-700">
+                  Assessment result could not be loaded. {assessmentAccessError}
+                </p>
+              ) : chapterOneAssessmentAttempt?.status === "submitted" ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-900">Submitted</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {chapterOneAssessmentAttempt.submitted_at
+                        ? `Completed ${new Date(chapterOneAssessmentAttempt.submitted_at).toLocaleDateString()}`
+                        : "Your completed attempt has been saved."}
+                      {(chapterOneAssessmentAttempt.pending_review_marks ?? 0) > 0
+                        ? ` · ${chapterOneAssessmentAttempt.pending_review_marks} marks pending review`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
+                    Final result
+                  </span>
+                </div>
+              ) : chapterOneAssessmentAttempt?.status === "active" ? (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Attempt in progress</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {chapterOneAssessmentAttempt.locked_questions.length} of 15 questions locked in.
+                    Your final score will appear here after submission.
+                  </p>
+                </div>
+              ) : assessmentRequiresPremium ? (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Premium required</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Upgrade your plan to access this assessment.
+                  </p>
+                </div>
+              ) : assessmentModulesIncomplete ? (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Assessment locked</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Complete all Chapter 1 modules first
+                    {chapterOneAssessmentPrerequisite.totalCount > 0
+                      ? ` · ${chapterOneAssessmentPrerequisite.completedCount}/${chapterOneAssessmentPrerequisite.totalCount} complete`
+                      : ""}
+                    .
+                  </p>
+                </div>
+              ) : isChapterOneAssessmentUnlocked ? (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Ready to begin</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Your Chapter 1 assessment is unlocked in the workspace.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Awaiting unlock</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    You have completed the chapter. Your tutor can now unlock the assessment.
+                  </p>
+                </div>
+              )}
+            </div>
+          </article>
+        ) : null}
 
         {role === "tutor" && chapterTitles.length > 0 ? (
           <article className="rounded-2xl border border-zinc-200 bg-[var(--surface-panel)] p-4 shadow-sm transition-all duration-200 md:p-6">
@@ -925,6 +1063,46 @@ export function DashboardHome({
                             </button>
                           );
                         })}
+                      </div>
+                    ) : null}
+                    {role === "tutor" && selectedStudent && chapterTitle === CHAPTER_ONE_TITLE ? (
+                      <div className="mt-2 border-t border-zinc-100 pt-2 pl-[18px]">
+                        <button
+                          type="button"
+                          onClick={() => { void onToggleChapterOneAssessment?.(); }}
+                          disabled={isAssessmentAccessLoading || assessmentNeedsPremium || assessmentModulesIncomplete}
+                          className={[
+                            "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-wait disabled:opacity-60",
+                            isChapterOneAssessmentUnlocked && !assessmentNeedsPremium
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100",
+                          ].join(" ")}
+                          aria-pressed={isChapterOneAssessmentUnlocked && !assessmentNeedsPremium}
+                          title={assessmentNeedsPremium ? "Upgrade this student to Premium before unlocking the assessment" : assessmentModulesIncomplete ? "All chapter modules must be completed before this assessment can be unlocked" : isChapterOneAssessmentUnlocked ? "Click to lock assessment" : "Click to unlock assessment"}
+                        >
+                          {isChapterOneAssessmentUnlocked && !assessmentNeedsPremium ? <UnlockIcon className="h-3 w-3" /> : <LockIcon className="h-3 w-3" />}
+                          {assessmentNeedsPremium
+                            ? "Assessment · Premium required"
+                            : assessmentModulesIncomplete
+                              ? chapterOneAssessmentPrerequisite.totalCount > 0
+                                ? `Assessment · ${chapterOneAssessmentPrerequisite.completedCount}/${chapterOneAssessmentPrerequisite.totalCount} modules`
+                                : "Assessment · Checking modules"
+                            : `Assessment ${isChapterOneAssessmentUnlocked ? "unlocked" : "locked"}`}
+                        </button>
+                        {assessmentAccessError ? <p className="mt-1 text-[11px] text-red-600">{assessmentAccessError}</p> : null}
+                        <p className="mt-1 text-[11px] text-zinc-500">
+                          {assessmentNeedsPremium
+                            ? "Upgrade this student to Premium before unlocking."
+                            : assessmentModulesIncomplete
+                              ? chapterOneAssessmentPrerequisite.totalCount > 0
+                                ? `Complete all ${chapterOneAssessmentPrerequisite.totalCount} chapter modules before unlocking.`
+                                : "Checking chapter completion before unlocking."
+                            : chapterOneAssessmentAttempt?.status === "submitted"
+                            ? `Submitted · ${chapterOneAssessmentAttempt.score ?? 0}/${chapterOneAssessmentAttempt.automated_total_marks ?? chapterOneAssessmentAttempt.total_marks} automatically marked${(chapterOneAssessmentAttempt.pending_review_marks ?? 0) > 0 ? ` · ${chapterOneAssessmentAttempt.pending_review_marks} sketch marks pending` : ""}${chapterOneAssessmentAttempt.submitted_at ? ` · ${new Date(chapterOneAssessmentAttempt.submitted_at).toLocaleDateString()}` : ""}`
+                            : chapterOneAssessmentAttempt?.status === "active"
+                              ? `Attempt in progress · ${chapterOneAssessmentAttempt.score ?? 0}/${chapterOneAssessmentAttempt.automated_total_marks ?? chapterOneAssessmentAttempt.total_marks} currently marked · ${chapterOneAssessmentAttempt.locked_questions.length} locked`
+                              : "No attempt started"}
+                        </p>
                       </div>
                     ) : null}
                   </div>

@@ -1,4 +1,7 @@
-import { END_OF_TOPIC_ASSESSMENT_TITLE } from "@/lib/seed";
+import {
+  END_OF_TOPIC_ASSESSMENT_TITLE,
+  INTERACTIVE_ASSESSMENT_TITLE,
+} from "@/lib/seed";
 import type { FlowNode, FlowState, NodeKind } from "@/types/flowstate";
 
 function cloneState(state: FlowState): FlowState {
@@ -438,7 +441,11 @@ function collectDescendantPageIds(state: FlowState, id: string, pageIds: string[
   const node = state.nodes[id];
   if (!node) return;
 
-  if (node.kind === "page" && node.title !== END_OF_TOPIC_ASSESSMENT_TITLE) {
+  if (
+    node.kind === "page" &&
+    node.title !== END_OF_TOPIC_ASSESSMENT_TITLE &&
+    node.title !== INTERACTIVE_ASSESSMENT_TITLE
+  ) {
     pageIds.push(node.id);
   }
 
@@ -476,6 +483,16 @@ function getChapterAssessmentId(state: FlowState, chapterId: string): string | n
     const childNode = state.nodes[childId];
     if (
       childNode?.kind === "page" &&
+      childNode.title === INTERACTIVE_ASSESSMENT_TITLE
+    ) {
+      return childNode.id;
+    }
+  }
+
+  for (const childId of chapterNode.childrenIds) {
+    const childNode = state.nodes[childId];
+    if (
+      childNode?.kind === "page" &&
       childNode.title === END_OF_TOPIC_ASSESSMENT_TITLE
     ) {
       return childNode.id;
@@ -506,7 +523,8 @@ export function getLessonChapterContext(
   if (lessonIds.length === 0 && assessmentId !== id) return null;
 
   const currentLessonIndex = lessonIds.indexOf(id);
-  const isAssessmentPage = assessmentId === id;
+  const isAssessmentPage =
+    assessmentId === id || node.title === END_OF_TOPIC_ASSESSMENT_TITLE;
   if (currentLessonIndex === -1 && !isAssessmentPage) return null;
 
   return {

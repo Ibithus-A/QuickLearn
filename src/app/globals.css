@@ -115,6 +115,18 @@ body::-webkit-scrollbar {
     sans-serif;
 }
 
+.native-lesson-diagram svg text {
+  font-family: inherit;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.native-lesson-diagram svg path[fill="none"] {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 button,
 input,
 textarea {

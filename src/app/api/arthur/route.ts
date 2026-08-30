@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readPdfTextForSubtopic } from "@/lib/pdf-text";
 import { createRateLimiter } from "@/lib/security/rate-limit";
+import { getViewerProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -84,6 +85,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  try {
+    const viewer = await getViewerProfile(supabase, user.id);
+    if (!viewer) {
+      return NextResponse.json({ error: "Profile not found." }, { status: 404 });
+    }
+    if (viewer.role === "student" && viewer.plan !== "premium") {
+      return NextResponse.json(
+        { error: "Arthur AI is not available on the Basic Plan." },
+        { status: 403 },
+      );
+    }
+  } catch (error) {
+    console.error("[arthur] profile lookup failed", error);
+    return NextResponse.json(
+      { error: "Unable to verify Arthur access." },
+      { status: 500 },
+    );
+  }
+
   const limiterResult = enforceArthurRateLimit(`${user.id}:/api/arthur`);
   if (!limiterResult.allowed) {
     return NextResponse.json(
@@ -112,6 +132,12 @@ export async function POST(request: Request) {
       }));
     const pageTitle = body.pageTitle?.trim().slice(0, 500) || "Untitled page";
     const pdfTitle = body.pdfTitle?.trim().slice(0, 500) || pageTitle;
+    if (/assessment/i.test(pageTitle) || /assessment/i.test(pdfTitle)) {
+      return NextResponse.json(
+        { error: "Arthur is disabled on assessment pages." },
+        { status: 403 },
+      );
+    }
     const pageContent = (body.pageContent ?? "").trim().slice(0, MAX_CONTEXT_CHARS);
     const workspaceContext = (body.workspaceContext ?? "")
       .trim()

@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TutorialShowcase, type TutorialSurface } from "@/components/tutorial-showcase";
 import { FlowStateProvider } from "@/context/flowstate-context";
 import { useAuthSession } from "@/lib/hooks/use-auth-session";
+import { useAssessmentAccess } from "@/lib/hooks/use-assessment-access";
 import { useStudentProgress } from "@/lib/hooks/use-student-progress";
 import { useStudents } from "@/lib/hooks/use-students";
 import { useSidebarResize } from "@/lib/hooks/use-sidebar-resize";
@@ -58,6 +59,15 @@ export default function HomePage() {
   });
   const workspaceTopicProgress =
     effectiveCurrentUser?.role === "student" ? topicProgress : undefined;
+  const assessmentProgressVersion = topicProgress.rows
+    .map((row) => `${row.topic_id}:${row.status}:${row.watched_video}:${row.updated_at}`)
+    .join("|");
+  const assessmentAccess = useAssessmentAccess(
+    effectiveCurrentUser?.role === "tutor"
+      ? selectedStudentId || null
+      : effectiveCurrentUser?.id ?? null,
+    assessmentProgressVersion,
+  );
 
   const handleContinueFromSignIn = (account: AuthenticatedAccount) => {
     setAuthenticatedUser(account);
@@ -73,6 +83,7 @@ export default function HomePage() {
   const handleOpenDashboardFromSidebar = () => {
     setIsSidebarAutoOpen(false);
     setView("dashboard");
+    void assessmentAccess.refresh();
   };
 
   const handleOpenWorkspaceFromDashboard = () => {
@@ -146,6 +157,13 @@ export default function HomePage() {
             onSetStudentPlan={setPlanForSelectedStudent}
             onSetMilestoneChapter={setMilestoneForSelectedStudent}
             onToggleChapter={toggleChapterForSelectedStudent}
+            isChapterOneAssessmentUnlocked={assessmentAccess.isUnlocked}
+            assessmentRequiresPremium={assessmentAccess.requiresPremium}
+            isAssessmentAccessLoading={assessmentAccess.isLoading}
+            assessmentAccessError={assessmentAccess.error}
+            chapterOneAssessmentAttempt={assessmentAccess.attempt}
+            chapterOneAssessmentPrerequisite={assessmentAccess.prerequisite}
+            onToggleChapterOneAssessment={assessmentAccess.toggle}
             onDeleteStudent={deleteSelectedStudent}
             topicProgress={topicProgress}
           />

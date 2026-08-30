@@ -1,6 +1,11 @@
 "use client";
 
 import { ArrowUpIcon, AssistantIcon, CloseIcon, MathsIcon } from "@/components/icons";
+import { mathExpression } from "@/lib/math-format";
+import {
+  SHARED_MATH_INPUT_GROUPS,
+  type SharedMathInputItem,
+} from "@/lib/math-input-catalog";
 import katex from "katex";
 import {
   FormEvent,
@@ -102,132 +107,13 @@ function insertStructure(
   return (selection) => (selection ? withSelection(selection) : empty);
 }
 
-function stripOuterParens(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith("(") || !trimmed.endsWith(")")) return trimmed;
-
-  let depth = 0;
-  for (let index = 0; index < trimmed.length; index += 1) {
-    const char = trimmed[index];
-    if (char === "(") depth += 1;
-    if (char === ")") depth -= 1;
-    if (depth === 0 && index < trimmed.length - 1) return trimmed;
-  }
-
-  return stripOuterParens(trimmed.slice(1, -1));
-}
-
-function findTopLevelOperator(value: string, operators: string[]) {
-  let depth = 0;
-  for (let index = value.length - 1; index >= 0; index -= 1) {
-    const char = value[index];
-    if (char === ")") depth += 1;
-    if (char === "(") depth -= 1;
-    if (depth === 0 && operators.includes(char)) return index;
-  }
-
-  return -1;
-}
-
-function findTopLevelAddSubtract(value: string) {
-  let depth = 0;
-  for (let index = value.length - 1; index > 0; index -= 1) {
-    const char = value[index];
-    if (char === ")") depth += 1;
-    if (char === "(") depth -= 1;
-    if (depth === 0 && (char === "+" || char === "-")) return index;
-  }
-
-  return -1;
-}
-
-function formatPowerBase(value: string) {
-  const trimmed = value.trim();
-  if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
-    return `\\left(${formatPlainMath(trimmed.slice(1, -1))}\\right)`;
-  }
-
-  const formatted = formatPlainMath(trimmed);
-  return /[+\-/]/.test(trimmed) ? `\\left(${formatted}\\right)` : formatted;
-}
-
-function formatPlainMath(value: string, fallback = "\\square"): string {
-  const trimmed = stripOuterParens(value);
-  if (!trimmed) return fallback;
-  if (trimmed.includes("\\")) return trimmed;
-
-  const sqrtSymbolMatch = trimmed.match(/^√\((.*)\)$/);
-  if (sqrtSymbolMatch) {
-    return `\\sqrt{${formatPlainMath(sqrtSymbolMatch[1])}}`;
-  }
-
-  const absSymbolMatch = trimmed.match(/^\|(.*)\|$/);
-  if (absSymbolMatch) {
-    return `\\left|${formatPlainMath(absSymbolMatch[1])}\\right|`;
-  }
-
-  const addSubtractIndex = findTopLevelAddSubtract(trimmed);
-  if (addSubtractIndex > 0 && addSubtractIndex < trimmed.length - 1) {
-    return `${formatPlainMath(trimmed.slice(0, addSubtractIndex))}${trimmed[addSubtractIndex]}${formatPlainMath(
-      trimmed.slice(addSubtractIndex + 1),
-    )}`;
-  }
-
-  const divisionIndex = findTopLevelOperator(trimmed, ["/"]);
-  if (divisionIndex > 0 && divisionIndex < trimmed.length - 1) {
-    return `\\frac{${formatPlainMath(trimmed.slice(0, divisionIndex))}}{${formatPlainMath(
-      trimmed.slice(divisionIndex + 1),
-    )}}`;
-  }
-
-  const powerIndex = findTopLevelOperator(trimmed, ["^"]);
-  if (powerIndex > 0 && powerIndex < trimmed.length - 1) {
-    return `${formatPowerBase(trimmed.slice(0, powerIndex))}^{${formatPlainMath(
-      trimmed.slice(powerIndex + 1),
-    )}}`;
-  }
-
-  const functionMatch = trimmed.match(/^([a-zA-Z]+)\((.*)\)$/);
-  if (functionMatch) {
-    const [, rawName, argument] = functionMatch;
-    const name = rawName.toLowerCase();
-    const argumentLatex = formatPlainMath(argument);
-
-    if (["sin", "cos", "tan", "ln", "log"].includes(name)) {
-      return `\\${name}\\left(${argumentLatex}\\right)`;
-    }
-
-    if (name === "sqrt") return `\\sqrt{${argumentLatex}}`;
-    if (name === "abs") return `\\left|${argumentLatex}\\right|`;
-    if (name === "arcsin" || name === "asin") return `\\sin^{-1}\\left(${argumentLatex}\\right)`;
-    if (name === "arccos" || name === "acos") return `\\cos^{-1}\\left(${argumentLatex}\\right)`;
-    if (name === "arctan" || name === "atan") return `\\tan^{-1}\\left(${argumentLatex}\\right)`;
-  }
-
-  return trimmed
-    .replace(/\*/g, "\\cdot ")
-    .replace(/π/g, "\\pi")
-    .replace(/θ/g, "\\theta")
-    .replace(/α/g, "\\alpha")
-    .replace(/β/g, "\\beta")
-    .replace(/∞/g, "\\infty")
-    .replace(/≤/g, "\\leq")
-    .replace(/≥/g, "\\geq")
-    .replace(/≠/g, "\\neq")
-    .replace(/≈/g, "\\approx")
-    .replace(/→/g, "\\to")
-    .replace(/\bpi\b/gi, "\\pi")
-    .replace(/\btheta\b/gi, "\\theta")
-    .replace(/\balpha\b/gi, "\\alpha")
-    .replace(/\bbeta\b/gi, "\\beta");
-}
-
-function mathExpression(value: string, fallback = "\\square") {
-  return formatPlainMath(value, fallback);
-}
-
 function plainMathInsertion(item: MathInsert, selectedText: string) {
   const selected = selectedText.trim();
+
+  if (item.id.startsWith("variable-")) {
+    const letter = item.id.slice("variable-".length);
+    return { text: letter, caret: letter.length };
+  }
 
   switch (item.id) {
     case "fraction": {
@@ -266,6 +152,14 @@ function plainMathInsertion(item: MathInsert, selectedText: string) {
     }
     case "asin": {
       const text = `asin(${selected})`;
+      return { text, caret: selected ? text.length : 5 };
+    }
+    case "acos": {
+      const text = `acos(${selected})`;
+      return { text, caret: selected ? text.length : 5 };
+    }
+    case "atan": {
+      const text = `atan(${selected})`;
       return { text, caret: selected ? text.length : 5 };
     }
     case "exp": {
@@ -442,10 +336,15 @@ function getMathDraftConfig(item: MathInsert, selection: string): MathDraftConfi
       };
     }
     case "asin":
+    case "acos":
+    case "atan":
       return {
         fields: [expressionField],
         initialValues: { expression: selectedExpression },
-        toLatex: (values) => `\\sin^{-1}(${mathExpression(values.expression)})`,
+        toLatex: (values) => {
+          const command = item.id === "asin" ? "sin" : item.id === "acos" ? "cos" : "tan";
+          return `\\${command}^{-1}(${mathExpression(values.expression)})`;
+        },
       };
     case "exp":
       return {
@@ -464,7 +363,7 @@ function getMathDraftConfig(item: MathInsert, selection: string): MathDraftConfi
   }
 }
 
-const MATH_GROUPS: MathGroup[] = [
+const LEGACY_MATH_GROUPS: MathGroup[] = [
   {
     id: "structure",
     label: "Structure",
@@ -691,6 +590,45 @@ const MATH_GROUPS: MathGroup[] = [
     ],
   },
 ];
+
+const LEGACY_ARTHUR_KEYS = new Map(
+  LEGACY_MATH_GROUPS.flatMap((group) => group.items).map((item) => [item.id, item]),
+);
+
+function buildMissingArthurMathItem(item: SharedMathInputItem): MathInsert {
+  if (item.id.startsWith("variable-")) {
+    return {
+      ...item,
+      build: insertSymbol(item.id.slice("variable-".length)),
+    };
+  }
+
+  if (item.id === "acos" || item.id === "atan") {
+    const command = item.id === "acos" ? "cos" : "tan";
+    return {
+      ...item,
+      build: insertSymbol(`\\${command}^{-1}`),
+    };
+  }
+
+  throw new Error(`Missing Arthur maths input implementation for ${item.id}`);
+}
+
+const MATH_GROUPS: MathGroup[] = SHARED_MATH_INPUT_GROUPS.map((group) => ({
+  id: group.id,
+  label: group.label,
+  items: group.items.map((item) => {
+    const existing = LEGACY_ARTHUR_KEYS.get(item.id);
+    return existing
+      ? {
+          ...existing,
+          label: item.label,
+          labelLatex: item.labelLatex,
+          ariaLabel: item.ariaLabel,
+        }
+      : buildMissingArthurMathItem(item);
+  }),
+}));
 
 type EditorActionsDrawerProps = {
   pageTitle: string;

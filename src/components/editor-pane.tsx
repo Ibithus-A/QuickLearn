@@ -3,10 +3,15 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { canAccessNode, getLockedChapterMessage } from "@/lib/access";
+import { ChapterOneInteractiveAssessment } from "@/components/chapter-one-interactive-assessment";
 import { FolderIcon } from "@/components/icons";
 import type { TutorialSurface } from "@/components/tutorial-showcase";
+import { getNotionLesson } from "@/content/notion-lessons/registry";
 import { useFlowState } from "@/context/flowstate-context";
-import { END_OF_TOPIC_ASSESSMENT_TITLE } from "@/lib/seed";
+import {
+  END_OF_TOPIC_ASSESSMENT_TITLE,
+  INTERACTIVE_ASSESSMENT_TITLE,
+} from "@/lib/seed";
 import {
   getDefaultTitle,
   getLessonChapterContext,
@@ -140,6 +145,7 @@ export function EditorPane({
   const titleMeasureRef = useRef<HTMLSpanElement | null>(null);
   const [titleFontSizePx, setTitleFontSizePx] = useState(MAX_TITLE_FONT_SIZE_PX);
   const [isAssistantHovered, setIsAssistantHovered] = useState(false);
+  const [isAssessmentMathsOpen, setIsAssessmentMathsOpen] = useState(false);
   const [mobileAssistantNodeId, setMobileAssistantNodeId] = useState<string | null>(null);
   const [surfaceTransitionMode, setSurfaceTransitionMode] =
     useState<SurfaceTransitionMode>("fade");
@@ -188,10 +194,16 @@ export function EditorPane({
   const lessonContext = selectedNode ? getLessonChapterContext(state, selectedNode.id) : null;
   const isLessonPage = selectedNode?.kind === "page" && Boolean(lessonContext);
   const isAssessmentPage = Boolean(lessonContext?.isAssessmentPage);
+  const isInteractiveAssessment =
+    selectedNode?.title === INTERACTIVE_ASSESSMENT_TITLE;
+  const notionLesson = getNotionLesson(selectedNode?.title);
+  const NativeLessonComponent = notionLesson?.Component ?? null;
+  const isNativeLessonPreview = Boolean(notionLesson);
+  const lessonAssetTitle = notionLesson?.definition.sourceTitle ?? selectedNodeTitle;
   const assistantPdfTitle =
     isAssessmentPage && lessonContext
       ? resolveAssessmentPdfTitle(lessonContext.chapterTitle)
-      : selectedNodeTitle;
+      : lessonAssetTitle;
   const parentFolder =
     selectedNode?.parentId && state.nodes[selectedNode.parentId]?.kind === "folder"
       ? state.nodes[selectedNode.parentId]
@@ -440,6 +452,7 @@ export function EditorPane({
       <div
         className={[
           "min-w-0 flex-1 transition-[padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          isAssessmentMathsOpen ? "lg:pr-[390px]" : "lg:pr-0",
         ].join(" ")}
         style={editorShellStyle}
       >
@@ -570,6 +583,8 @@ export function EditorPane({
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
+                            {!isNativeLessonPreview ? (
+                              <>
                             <button
                               type="button"
                               onClick={() => {
@@ -642,6 +657,8 @@ export function EditorPane({
                                 </svg>
                               </button>
                             </div>
+                              </>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => showLessonSurface(selectedId, "video", pdfZoom)}
@@ -655,28 +672,32 @@ export function EditorPane({
                       </div>
 
                       <div className="px-4 py-5 md:px-5">
-                        <div className="overflow-hidden rounded-none bg-white">
-                          <PdfCanvasDocument
-                            ref={pdfRef}
-                            key={selectedNode.id}
-                            pdfUrl={resolveSubtopicPdfUrl(
-                              selectedNode.title,
-                              lessonContext?.subjectTitle,
-                            )}
-                            zoom={pdfZoom}
-                            autoFitDefault={shouldFitPdfToPage}
-                            autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
-                            onAutoFitZoom={(nextZoom) =>
-                              setLessonSurface({
-                                nodeId: selectedId,
-                                view: lessonView,
-                                pdfZoom: nextZoom,
-                              })
-                            }
-                            emptyTitle="Notes coming soon"
-                            emptyBody="The notes for this subtopic will appear here shortly."
-                          />
-                        </div>
+                        {NativeLessonComponent ? (
+                          <NativeLessonComponent />
+                        ) : (
+                          <div className="overflow-hidden rounded-none bg-white">
+                            <PdfCanvasDocument
+                              ref={pdfRef}
+                              key={selectedNode.id}
+                              pdfUrl={resolveSubtopicPdfUrl(
+                                selectedNode.title,
+                                lessonContext?.subjectTitle,
+                              )}
+                              zoom={pdfZoom}
+                              autoFitDefault={shouldFitPdfToPage}
+                              autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
+                              onAutoFitZoom={(nextZoom) =>
+                                setLessonSurface({
+                                  nodeId: selectedId,
+                                  view: lessonView,
+                                  pdfZoom: nextZoom,
+                                })
+                              }
+                              emptyTitle="Notes coming soon"
+                              emptyBody="The notes for this subtopic will appear here shortly."
+                            />
+                          </div>
+                        )}
 
                         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                           <button
@@ -717,14 +738,16 @@ export function EditorPane({
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-                              Assessment PDF
+                              {isInteractiveAssessment ? "Timed Assessment" : "Tutor Assessment PDF"}
                             </p>
-                            <p className="mt-1 text-sm text-zinc-600">
-                              PDF workspace placeholder for this assessment
-                            </p>
+                            {!isInteractiveAssessment ? (
+                              <p className="mt-1 text-sm text-zinc-600">
+                                Original paper and tutor answer-key reference
+                              </p>
+                            ) : null}
                           </div>
                           <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-                            PDF
+                            {isInteractiveAssessment ? "Secure" : "PDF"}
                           </span>
                         </div>
                       </div>
@@ -733,31 +756,44 @@ export function EditorPane({
                     <div className={isAssessmentPage ? "px-4 py-5 md:px-5" : ""}>
                       {isAssessmentPage ? (
                         <div className="overflow-hidden rounded-none bg-white">
-                          <PdfCanvasDocument
-                            key={selectedNode.id}
-                            pdfUrl={resolveAssessmentPdfUrl(
-                              lessonContext.chapterTitle,
-                              lessonContext.subjectTitle,
-                            )}
-                            zoom={pdfZoom}
-                            autoFitDefault={shouldFitPdfToPage}
-                            autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
-                            onAutoFitZoom={(nextZoom) =>
-                              setLessonSurface({
-                                nodeId: selectedId,
-                                view: lessonView,
-                                pdfZoom: nextZoom,
-                              })
-                            }
-                            emptyTitle={`${END_OF_TOPIC_ASSESSMENT_TITLE} coming soon`}
-                            emptyBody="The assessment worksheet will appear here shortly."
-                          />
+                          {isInteractiveAssessment ? (
+                            <ChapterOneInteractiveAssessment
+                              role={role}
+                              onMathsSidebarOpenChange={setIsAssessmentMathsOpen}
+                              onCompleted={() => {
+                                if (!selectedNode || isLessonWatched) return;
+                                const metadata = selectedTopicMetadata();
+                                if (!metadata) return;
+                                void workspaceTopicProgress?.markTopicCompleted(metadata);
+                              }}
+                            />
+                          ) : (
+                            <PdfCanvasDocument
+                              key={selectedNode.id}
+                              pdfUrl={resolveAssessmentPdfUrl(
+                                lessonContext.chapterTitle,
+                                lessonContext.subjectTitle,
+                              )}
+                              zoom={pdfZoom}
+                              autoFitDefault={shouldFitPdfToPage}
+                              autoFitKey={`${selectedNode.id}:${tutorialSurface ?? "standard"}`}
+                              onAutoFitZoom={(nextZoom) =>
+                                setLessonSurface({
+                                  nodeId: selectedId,
+                                  view: lessonView,
+                                  pdfZoom: nextZoom,
+                                })
+                              }
+                              emptyTitle={`${END_OF_TOPIC_ASSESSMENT_TITLE} coming soon`}
+                              emptyBody="The assessment worksheet will appear here shortly."
+                            />
+                          )}
                         </div>
                       ) : (
                         <LessonVideoPlayer
                           key={selectedNode.id}
-                          videoUrl={resolveSubtopicVideoUrl(selectedNode.title)}
-                          posterUrl={resolveSubtopicVideoPosterUrl(selectedNode.title)}
+                          videoUrl={resolveSubtopicVideoUrl(lessonAssetTitle)}
+                          posterUrl={resolveSubtopicVideoPosterUrl(lessonAssetTitle)}
                           lessonTitle={selectedNode.title}
                           isLessonWatched={isLessonWatched}
                           onVideoComplete={() => {
@@ -769,6 +805,7 @@ export function EditorPane({
                         />
                       )}
 
+                      {!isInteractiveAssessment ? (
                       <div
                         className={[
                           "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
@@ -848,10 +885,12 @@ export function EditorPane({
                           </button>
                         </div>
                       </div>
+                      ) : null}
                     </div>
                   </section>
                   )}
 
+                  {!isAssessmentPage ? (
                   <section className="rounded-[24px] border border-zinc-200 bg-white px-5 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
@@ -880,6 +919,7 @@ export function EditorPane({
                       />
                     </div>
                   </section>
+                  ) : null}
                 </div>
               )}
 
@@ -901,7 +941,7 @@ export function EditorPane({
         </div>
       )}
 
-      {selectedNode.kind === "page" ? (
+      {selectedNode.kind === "page" && !isAssessmentPage ? (
         <EditorActionsDrawer
           pageTitle={selectedNode.title}
           pdfTitle={assistantPdfTitle}
@@ -1362,7 +1402,7 @@ function LessonVideoPlayer({
                 : "border border-white/15 bg-white/10 text-white/70",
             ].join(" ")}
           >
-            {isLessonWatched ? "Watched" : "Premium"}
+            {isLessonWatched ? "Watched" : "Not watched"}
           </span>
         </div>
       </div>

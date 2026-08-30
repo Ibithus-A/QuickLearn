@@ -418,8 +418,9 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
               Simple pricing. Real results.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-zinc-600 md:text-base">
-              Start free with the full notes library. Upgrade for video walkthroughs,
-              Arthur and 1:1 tutoring when you are ready to go further.
+              Explore the complete first chapter free, including its notes, video
+              walkthroughs and one timed assessment. Upgrade for the full course,
+              Arthur and 1:1 tutoring.
             </p>
           </div>
         </RevealOnScroll>
@@ -431,7 +432,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
               name="Basic"
               price="£0"
               cadence="free forever"
-              tagline="Every chapter, every subtopic — the fundamentals, on the house."
+              tagline="A complete Chapter 1 preview of the Excelora learning experience."
               perks={BASIC_PERKS}
               ctaLabel="Create free account"
               onCtaClick={onGetStarted}
@@ -442,7 +443,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
               name="Premium"
               price="Coming soon"
               cadence="early access"
-              tagline="Notes, video walkthroughs, Arthur and 1:1 tutor sessions, together."
+              tagline="The complete course, Arthur and 1:1 tutor support, together."
               perks={PREMIUM_PERKS}
               ctaLabel="Join the Premium waitlist"
               onCtaClick={onGetStarted}
@@ -1004,15 +1005,17 @@ function StepProgressPreview() {
 }
 
 const BASIC_PERKS = [
-  "Full chapter notes, beautifully typeset",
-  "PDF workbook for every subtopic",
-  "Progress tracking across chapters",
+  "Complete Chapter 1 notes and video walkthroughs",
+  "One timed Chapter 1 assessment attempt",
+  "Chapter 1 progress tracking",
+  "No Arthur AI on the Basic Plan",
   "Works on phone, tablet and laptop",
 ];
 
 const PREMIUM_PERKS = [
   "Everything in Basic",
-  "Video walkthroughs for every subtopic",
+  "Full course notes and video walkthroughs",
+  "Timed assessments across available chapters",
   "Arthur — grounded in the same notes you read",
   "1:1 tutor sessions",
   "Priority support from UK tutors",
