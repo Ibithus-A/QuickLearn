@@ -58,6 +58,7 @@ type PdfPageImage = {
 const MAX_TITLE_FONT_SIZE_PX = 36;
 const MIN_TITLE_FONT_SIZE_PX = 20;
 const LEGACY_PLACEHOLDER_CONTENT = "use this space for notes and examples";
+const LESSON_VIDEO_ASSET_VERSION = "20260903-video-1-9-graphs-v2";
 const pdfBufferCache = new Map<string, Uint8Array>();
 
 function resolveSubjectAssetPath(subjectTitle: string | null | undefined, fileTitle: string): string {
@@ -70,11 +71,11 @@ function resolveSubtopicPdfUrl(title: string, subjectTitle: string | null | unde
 }
 
 function resolveSubtopicVideoUrl(title: string): string {
-  return `/assets/videos/${encodeURIComponent(title.trim())}.mp4`;
+  return `/assets/videos/${encodeURIComponent(title.trim())}.mp4?v=${LESSON_VIDEO_ASSET_VERSION}`;
 }
 
 function resolveSubtopicVideoPosterUrl(title: string): string {
-  return `/assets/videos/${encodeURIComponent(title.trim())}.jpg`;
+  return `/assets/videos/${encodeURIComponent(title.trim())}.jpg?v=${LESSON_VIDEO_ASSET_VERSION}`;
 }
 
 function resolveAssessmentPdfUrl(
@@ -230,6 +231,8 @@ export function EditorPane({
     [selectedId, state],
   );
   const tutorialLessonId = useMemo(() => {
+    let fallbackLessonId: string | null = null;
+
     for (const rootId of state.rootIds) {
       const stack = [rootId];
       while (stack.length > 0) {
@@ -238,19 +241,19 @@ export function EditorPane({
         const node = state.nodes[nodeId];
         if (!node) continue;
 
-        if (
-          node.kind === "page" &&
-          canAccessNode(state, node.id, viewerProfile) &&
-          getLessonChapterContext(state, node.id)
-        ) {
-          return node.id;
+        if (node.kind === "page" && canAccessNode(state, node.id, viewerProfile)) {
+          const context = getLessonChapterContext(state, node.id);
+          if (context && !context.isAssessmentPage) {
+            if (getNotionLesson(node.title)) return node.id;
+            fallbackLessonId ??= node.id;
+          }
         }
 
         stack.unshift(...node.childrenIds);
       }
     }
 
-    return null;
+    return fallbackLessonId;
   }, [state, viewerProfile]);
   const editorShellStyle = {
     paddingLeft: sidebarInsetPx > 0 ? `min(${sidebarInsetPx}px, 88vw)` : undefined,
@@ -558,7 +561,9 @@ export function EditorPane({
                     >
                       <span className="text-sm font-semibold leading-none text-zinc-900">-</span>
                       {!isAssessmentPage && lessonView === "video"
-                        ? "Back to notes"
+                        ? isNativeLessonPreview
+                          ? "Back to lesson page"
+                          : "Back to notes"
                         : `Back to ${parentFolder.title}`}
                     </button>
                   ) : null}
@@ -576,10 +581,12 @@ export function EditorPane({
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-                              Lesson Notes
+                              {isNativeLessonPreview ? "Interactive Lesson" : "Lesson Notes"}
                             </p>
                             <p className="mt-1 text-sm text-zinc-600">
-                              Read the notes below, or watch the full walkthrough
+                              {isNativeLessonPreview
+                                ? "Work through the page below, or watch the full walkthrough"
+                                : "Read the notes below, or watch the full walkthrough"}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">

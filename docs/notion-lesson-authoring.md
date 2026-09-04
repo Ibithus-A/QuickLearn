@@ -18,7 +18,7 @@ Add one entry to `NOTION_LESSON_DEFINITIONS` before writing the page:
 ```ts
 exampleLesson: defineLesson({
   id: "pure-mathematics-2-1-example-lesson",
-  previewTitle: EXAMPLE_NATIVE_PREVIEW_TITLE,
+  previewTitle: EXAMPLE_NATIVE_LESSON_TITLE,
   sourceTitle: "2.1 Example Lesson",
   title: "Example Lesson",
 }),
@@ -26,7 +26,8 @@ exampleLesson: defineLesson({
 
 - `id` is permanent, lowercase, and unique.
 - `previewTitle` must exactly match the page title in the course seed.
-- `sourceTitle` must exactly match the PDF filename without `.pdf`. It is also used to resolve lesson video and Arthur context assets.
+- `sourceTitle` is the stable original lesson title. It must match the lesson video and poster filenames without their extensions. A matching PDF is optional for native interactive lessons; Arthur should use the rendered page context when no legacy PDF is shipped.
+- `previewTitle` is the title displayed in the workspace. Use the normal numbered lesson title only; never append “Notion Preview” or another implementation label.
 - `title` is the clean heading shown inside the Notion page.
 - Subject and chapter metadata must match the course tree. Extend `defineLesson` or create a chapter-specific helper when adding a new chapter.
 

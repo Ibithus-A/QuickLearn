@@ -154,11 +154,11 @@ export function SimultaneousEquationsNativeLesson() {
             <p>
               When <MathText>{String.raw`y=2`}</MathText>: <MathText>{String.raw`x=6`}</MathText>.
               When <MathText>{String.raw`y=-\frac{64}{5}`}</MathText>:
-              <MathText>{String.raw`x=-\frac{66}{5}`}</MathText>.
+              <MathText>{String.raw`x=-\frac{81}{5}`}</MathText>.
             </p>
             <p>
               Solutions: <MathText>{String.raw`(6,2)`}</MathText> and
-              <MathText>{String.raw`\left(-\frac{66}{5},-\frac{64}{5}\right)`}</MathText>.
+              <MathText>{String.raw`\left(-\frac{81}{5},-\frac{64}{5}\right)`}</MathText>.
             </p>
           </div>
 

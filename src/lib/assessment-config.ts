@@ -21,11 +21,15 @@ export function normalizeAssessmentModuleTitle(title: string) {
 }
 
 const chapterOneModuleTitles =
-  A_LEVEL_MATHS_CHAPTERS.find((chapter) => chapter.title === CHAPTER_ONE_TITLE)?.subtopics.filter(
-    (title) =>
-      title !== INTERACTIVE_ASSESSMENT_TITLE &&
-      !/[—-]\s+notion preview$/i.test(title),
-  ) ?? [];
+  Array.from(
+    new Set(
+      A_LEVEL_MATHS_CHAPTERS.find(
+        (chapter) => chapter.title === CHAPTER_ONE_TITLE,
+      )?.subtopics
+        .filter((title) => title !== INTERACTIVE_ASSESSMENT_TITLE)
+        .map((title) => title.replace(/\s+[—-]\s+notion preview$/i, "")) ?? [],
+    ),
+  );
 
 export const CHAPTER_ONE_ASSESSMENT_CONFIG = {
   key: CHAPTER_ONE_ASSESSMENT_KEY,

@@ -235,7 +235,7 @@ export function InequalitiesNativeLesson() {
               <MathText>{String.raw`\frac{-3x-1}{x+1}>0`}</MathText>.
             </p>
             <p>
-              Multiply numerator and denominator by −1 (reversing inequality):
+              Multiply the entire inequality by −1 (reversing the inequality):
               <MathText>{String.raw`\frac{3x+1}{x+1}<0`}</MathText>.
             </p>
             <p>

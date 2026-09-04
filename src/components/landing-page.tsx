@@ -146,22 +146,22 @@ const WORKSPACE_SHOWCASE_ITEMS: WorkspaceShowcaseItem[] = [
 const FOOTER_SOCIAL_LINKS = [
   {
     label: "Facebook",
-    href: "https://www.facebook.com/share/1AjaVWMcEy/?mibextid=wwXIfr",
+    href: "https://www.facebook.com/profile.php?id=61593092605844&locale=en_GB",
     icon: FacebookIcon,
   },
   {
     label: "Instagram",
-    href: "https://www.instagram.com/_excelora_?igsh=bm93cmwxZjR4MGI0&utm_source=qr",
+    href: "https://www.instagram.com/_excelora?igsi=MWRnMHR4YzRieXJhdA%3D%3D&utm_source=qr",
     icon: InstagramIcon,
   },
   {
     label: "LinkedIn",
-    href: "https://www.linkedin.com/in/ibrahim-ahmed-394b472b6/",
+    href: "https://www.linkedin.com/in/ibrahim-ahmed-394b472b6",
     icon: LinkedInIcon,
   },
   {
     label: "TikTok",
-    href: "https://www.tiktok.com/@excelora.tutors?_r=1&_t=ZN-94J0eBjGJK2",
+    href: "https://www.tiktok.com/@excelora.tutors",
     icon: TikTokIcon,
   },
 ] as const;
@@ -528,7 +528,7 @@ export function LandingPage({ onSignIn, onGetStarted }: LandingPageProps) {
                         href={href}
                         aria-label={label}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-black/92 transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-black/[0.035] hover:text-black"
                       >
                         <Icon className="h-[24px] w-[24px]" />

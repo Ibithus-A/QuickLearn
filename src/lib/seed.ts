@@ -20,29 +20,29 @@ export const PURE_MATHEMATICS_TITLE = "Pure Mathematics";
 export const MECHANICS_TITLE = "Mechanics";
 export const STATISTICS_TITLE = "Statistics";
 export const LAWS_OF_INDICES_NATIVE_PREVIEW_TITLE =
-  "1.1 Laws of Indices — Notion Preview";
+  "1.1 Laws of Indices";
 export const SURDS_NATIVE_PREVIEW_TITLE =
-  "1.2 Surds and Rationalising Denominators — Notion Preview";
+  "1.2 Surds and Rationalising Denominators";
 export const QUADRATIC_FUNCTIONS_NATIVE_PREVIEW_TITLE =
-  "1.3 Quadratic Functions — Notion Preview";
+  "1.3 Quadratic Functions";
 export const SIMULTANEOUS_EQUATIONS_NATIVE_PREVIEW_TITLE =
-  "1.4 Simultaneous Equations — Notion Preview";
+  "1.4 Simultaneous Equations";
 export const INEQUALITIES_NATIVE_PREVIEW_TITLE =
-  "1.5 Inequalities — Notion Preview";
+  "1.5 Inequalities";
 export const POLYNOMIALS_NATIVE_PREVIEW_TITLE =
-  "1.6 Polynomials and Algebraic Division — Notion Preview";
+  "1.6 Polynomials and Algebraic Division";
 export const GRAPHS_OF_FUNCTIONS_NATIVE_PREVIEW_TITLE =
-  "1.7 Graphs of Functions — Notion Preview";
+  "1.7 Graphs of Functions";
 export const MODULUS_FUNCTION_NATIVE_PREVIEW_TITLE =
-  "1.8 The Modulus Function — Notion Preview";
+  "1.8 The Modulus Function";
 export const COMPOSITE_INVERSE_FUNCTIONS_NATIVE_PREVIEW_TITLE =
-  "1.9 Composite and Inverse Functions — Notion Preview";
+  "1.9 Composite and Inverse Functions";
 export const GRAPH_TRANSFORMATIONS_NATIVE_PREVIEW_TITLE =
-  "1.10 Transformations of Graphs — Notion Preview";
+  "1.10 Transformations of Graphs";
 export const PARTIAL_FRACTIONS_NATIVE_PREVIEW_TITLE =
-  "1.11 Partial Fractions — Notion Preview";
+  "1.11 Partial Fractions";
 export const FUNCTIONS_MODELLING_NATIVE_PREVIEW_TITLE =
-  "1.12 Functions in Modelling — Notion Preview";
+  "1.12 Functions in Modelling";
 
 export const A_LEVEL_MATHS_SUBJECTS: SubjectDef[] = [
   {
@@ -51,29 +51,17 @@ export const A_LEVEL_MATHS_SUBJECTS: SubjectDef[] = [
       {
         title: "Chapter 1: Algebra and Functions",
         subtopics: [
-          "1.1 Laws of Indices",
           LAWS_OF_INDICES_NATIVE_PREVIEW_TITLE,
-          "1.2 Surds and Rationalising Denominators",
           SURDS_NATIVE_PREVIEW_TITLE,
-          "1.3 Quadratic Functions",
           QUADRATIC_FUNCTIONS_NATIVE_PREVIEW_TITLE,
-          "1.4 Simultaneous Equations",
           SIMULTANEOUS_EQUATIONS_NATIVE_PREVIEW_TITLE,
-          "1.5 Inequalities",
           INEQUALITIES_NATIVE_PREVIEW_TITLE,
-          "1.6 Polynomials and Algebraic Division",
           POLYNOMIALS_NATIVE_PREVIEW_TITLE,
-          "1.7 Graphs of Functions",
           GRAPHS_OF_FUNCTIONS_NATIVE_PREVIEW_TITLE,
-          "1.8 The Modulus Function",
           MODULUS_FUNCTION_NATIVE_PREVIEW_TITLE,
-          "1.9 Composite and Inverse Functions",
           COMPOSITE_INVERSE_FUNCTIONS_NATIVE_PREVIEW_TITLE,
-          "1.10 Transformations of Graphs",
           GRAPH_TRANSFORMATIONS_NATIVE_PREVIEW_TITLE,
-          "1.11 Partial Fractions",
           PARTIAL_FRACTIONS_NATIVE_PREVIEW_TITLE,
-          "1.12 Functions in Modelling",
           FUNCTIONS_MODELLING_NATIVE_PREVIEW_TITLE,
           INTERACTIVE_ASSESSMENT_TITLE,
         ],
@@ -365,6 +353,10 @@ function normalizeTitle(title: string) {
   return title.trim().toLowerCase();
 }
 
+function stripLegacyNotionPreviewSuffix(title: string) {
+  return title.replace(/\s+[—-]\s+notion preview$/i, "").trim();
+}
+
 function makeNodeId(title: string, nodes: Record<string, FlowNode>, seed: { value: number }) {
   const slug = title
     .toLowerCase()
@@ -575,6 +567,9 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
     }
 
     for (const chapter of subject.chapters) {
+      const usesInteractiveAssessment = chapter.subtopics.includes(
+        INTERACTIVE_ASSESSMENT_TITLE,
+      );
       const matchingChapterIds =
         next.nodes[subjectId]?.childrenIds.filter((childId) => {
           const child = next.nodes[childId];
@@ -597,6 +592,44 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
           (childId) => childId !== duplicateChapterId,
         );
         delete next.nodes[duplicateChapterId];
+      }
+
+      // Existing browsers may still have both the legacy PDF page and the
+      // former "— Notion Preview" duplicate. Preserve the interactive page ID
+      // (and therefore its saved progress), rename it to the clean lesson title,
+      // and remove the obsolete duplicate before normal reconciliation.
+      if (usesInteractiveAssessment) {
+        for (const subtopic of chapter.subtopics.filter(
+          (title) => title !== INTERACTIVE_ASSESSMENT_TITLE,
+        )) {
+          const matchingPageIds = next.nodes[chapterId].childrenIds.filter((childId) => {
+            const child = next.nodes[childId];
+            return (
+              child?.kind === "page" &&
+              normalizeTitle(stripLegacyNotionPreviewSuffix(child.title)) ===
+                normalizeTitle(subtopic)
+            );
+          });
+          if (matchingPageIds.length === 0) continue;
+
+          const legacyPreviewId = matchingPageIds.find((childId) => {
+            const child = next.nodes[childId];
+            return child ? /\s+[—-]\s+notion preview$/i.test(child.title) : false;
+          });
+          const retainedPageId = legacyPreviewId ?? matchingPageIds[0];
+          next.nodes[retainedPageId].title = subtopic;
+
+          for (const duplicatePageId of matchingPageIds) {
+            if (duplicatePageId === retainedPageId) continue;
+            next.nodes[chapterId].childrenIds = next.nodes[chapterId].childrenIds.filter(
+              (childId) => childId !== duplicatePageId,
+            );
+            if (next.selectedId === duplicatePageId) {
+              next.selectedId = retainedPageId;
+            }
+            delete next.nodes[duplicatePageId];
+          }
+        }
       }
 
       const legacyAssessmentId = next.nodes[chapterId]?.childrenIds.find((childId) => {
@@ -626,7 +659,12 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
       }
 
       const allowedPageTitles = new Set(
-        [...chapter.subtopics, END_OF_TOPIC_ASSESSMENT_TITLE, LEGACY_END_OF_TOPIC_ASSESSMENT_TITLE].map(
+        [
+          ...chapter.subtopics,
+          ...(usesInteractiveAssessment
+            ? []
+            : [END_OF_TOPIC_ASSESSMENT_TITLE, LEGACY_END_OF_TOPIC_ASSESSMENT_TITLE]),
+        ].map(
           (title) => normalizeTitle(title),
         ),
       );
@@ -654,21 +692,23 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
         }
       }
 
-      const hasAssessment = next.nodes[chapterId]?.childrenIds.some((childId) => {
-        const child = next.nodes[childId];
-        return (
-          child?.kind === "page" &&
-          normalizeTitle(child.title) === normalizeTitle(END_OF_TOPIC_ASSESSMENT_TITLE)
-        );
-      });
-      if (!hasAssessment) {
-        createPage(END_OF_TOPIC_ASSESSMENT_TITLE, chapterId);
+      if (!usesInteractiveAssessment) {
+        const hasAssessment = next.nodes[chapterId]?.childrenIds.some((childId) => {
+          const child = next.nodes[childId];
+          return (
+            child?.kind === "page" &&
+            normalizeTitle(child.title) === normalizeTitle(END_OF_TOPIC_ASSESSMENT_TITLE)
+          );
+        });
+        if (!hasAssessment) {
+          createPage(END_OF_TOPIC_ASSESSMENT_TITLE, chapterId);
+        }
       }
 
       next.nodes[chapterId].childrenIds = orderChildrenByTitle(
         next.nodes,
         next.nodes[chapterId].childrenIds,
-        chapter.subtopics.includes(INTERACTIVE_ASSESSMENT_TITLE)
+        usesInteractiveAssessment
           ? [
               ...chapter.subtopics.filter((title) => title !== INTERACTIVE_ASSESSMENT_TITLE),
               END_OF_TOPIC_ASSESSMENT_TITLE,
@@ -691,7 +731,7 @@ export function insertALevelMathsTree(state: FlowState): FlowState {
     A_LEVEL_MATHS_SUBJECT_TITLES,
   );
 
-  if (!next.selectedId) {
+  if (!next.selectedId || !next.nodes[next.selectedId]) {
     next.selectedId = courseRootId;
   }
 

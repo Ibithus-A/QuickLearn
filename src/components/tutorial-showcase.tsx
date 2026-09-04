@@ -42,15 +42,15 @@ const STEPS: TutorialStep[] = [
     selector: "[data-tour='sidebar-tree']",
     eyebrow: "Course map",
     title: "Move around the course",
-    body: "The sidebar is where subjects, chapters, lessons, and assessments live. Open folders, search, then jump straight into a topic.",
+    body: "The sidebar is where subjects, chapters, interactive lessons, and assessments live. Open a chapter, search, then jump straight into a topic.",
     placement: "right",
   },
   {
     id: "notes",
     selector: "[data-tour='lesson-notes']",
-    eyebrow: "Lesson notes",
-    title: "Read the worked notes",
-    body: "Each lesson opens with structured notes and PDF controls, so students can study without leaving the workspace.",
+    eyebrow: "Interactive lesson",
+    title: "Learn directly from the page",
+    body: "Each topic opens as a structured lesson page with explanations, worked examples, diagrams, and practice in the correct order.",
     placement: "left",
   },
   {
@@ -58,7 +58,7 @@ const STEPS: TutorialStep[] = [
     selector: "[data-tour='lesson-video']",
     eyebrow: "Video",
     title: "Switch to the walkthrough",
-    body: "The same lesson can show its video walkthrough. Students can mark lessons watched and move to the next topic.",
+    body: "Switch from the lesson page to its animated walkthrough. Completing the video records it as watched before students move to the next topic.",
     placement: "left",
   },
   {
@@ -66,7 +66,7 @@ const STEPS: TutorialStep[] = [
     selector: "[data-tour='ai-assistant']",
     eyebrow: "Arthur AI",
     title: "Ask for help when available",
-    body: "Arthur sits beside the lesson. Basic users can see where it is, but the assistant stays locked until their plan includes AI.",
+    body: "Arthur sits beside the current lesson page. Basic users can see where it is, but the assistant stays locked until their plan includes AI.",
     placement: "left",
   },
 ];
